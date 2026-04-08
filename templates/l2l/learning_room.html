@@ -1,0 +1,817 @@
+{% extends "base.html" %}
+{% block title %}Session with Max — TrueSkills Sales Coach{% endblock %}
+
+{% block head %}
+<!-- ElevenLabs Conversational AI Widget -->
+<script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script>
+
+<style>
+    * { box-sizing: border-box; }
+
+    body {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--bg);
+    }
+
+    /* ── HEADER ─────────────────────────────────── */
+    .learn-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        background: var(--bg);
+        z-index: 10;
+    }
+
+    .xp-badge {
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 4px 14px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: 0.5px;
+    }
+
+    /* ── MAIN LAYOUT: sidebar 20% + chat 80% ────── */
+    .main-layout {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    /* ── LEFT PANEL — controls ───────────────────── */
+    .left-panel {
+        width: 20%;
+        min-width: 140px;
+        max-width: 200px;
+        background: var(--bg2);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        padding: 24px 12px;
+        flex-shrink: 0;
+    }
+
+    .panel-btn {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--bg3);
+        border: 2px solid var(--border);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        transition: all 0.15s;
+        color: var(--muted);
+        font-size: 1.8rem;
+        user-select: none;
+        touch-action: manipulation;
+        text-decoration: none;
+    }
+
+    .panel-btn .btn-label {
+        font-size: 0.6rem;
+        font-family: inherit;
+        letter-spacing: 0.5px;
+        color: var(--dim);
+        font-weight: 700;
+        text-transform: uppercase;
+        line-height: 1;
+    }
+
+    .panel-btn:hover {
+        border-color: var(--accent);
+        background: var(--bg);
+        transform: scale(1.04);
+    }
+
+    .panel-btn.recording {
+        background: var(--retry-bg);
+        border-color: var(--retry);
+        color: var(--retry);
+        transform: scale(1.06);
+        animation: pulse 1s infinite;
+    }
+
+    .panel-btn.playing {
+        background: var(--bg3);
+        border-color: var(--leo-light);
+        color: var(--leo);
+    }
+
+    .panel-btn.voice-active {
+        background: #1a3a2a;
+        border-color: #4caf50;
+        color: #4caf50;
+        animation: pulse-green 1.2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(192,80,80,0.3); }
+        50%       { box-shadow: 0 0 0 8px rgba(192,80,80,0); }
+    }
+
+    @keyframes pulse-green {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.3); }
+        50%       { box-shadow: 0 0 0 8px rgba(76,175,80,0); }
+    }
+
+    .panel-divider {
+        width: 40px;
+        height: 1px;
+        background: var(--border);
+    }
+
+    /* ── RIGHT PANEL — chat 80% ──────────────────── */
+    .right-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* ── CHAT AREA ───────────────────────────────── */
+    .chat-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        scroll-behavior: smooth;
+    }
+
+    .msg {
+        max-width: 75%;
+        padding: 16px 20px;
+        border-radius: 18px;
+        font-size: 1.1rem;
+        line-height: 1.65;
+        word-break: break-word;
+    }
+
+    .msg-leo {
+        align-self: flex-start;
+        background: var(--leo);
+        border: 1px solid var(--leo-light);
+        color: #fff;
+        border-bottom-left-radius: 4px;
+    }
+
+    .msg-name {
+        font-size: 0.68rem;
+        color: var(--leo-soft);
+        margin-bottom: 6px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+    }
+
+    .msg-child {
+        align-self: flex-end;
+        background: var(--accent);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+        font-size: 1.08rem;
+    }
+
+    .xp-flash {
+        align-self: center;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 6px 18px;
+        font-size: 0.88rem;
+        color: var(--accent);
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .typing-indicator {
+        align-self: flex-start;
+        background: var(--leo);
+        border: 1px solid var(--leo-light);
+        border-radius: 18px;
+        border-bottom-left-radius: 4px;
+        padding: 14px 20px;
+        color: var(--leo-soft);
+        font-size: 0.95rem;
+        display: none;
+        font-style: italic;
+    }
+
+    /* ── TEXT INPUT AREA ─────────────────────────── */
+    .input-area {
+        flex-shrink: 0;
+        background: var(--bg2);
+        border-top: 1px solid var(--border);
+        padding: 14px 24px 18px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .text-input {
+        flex: 1;
+        resize: none;
+        border-radius: 14px;
+        min-height: 52px;
+        max-height: 120px;
+        padding: 14px 18px;
+        font-size: 1.05rem;
+        line-height: 1.5;
+        border: 1.5px solid var(--border);
+        background: var(--bg3);
+        color: var(--text);
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+
+    .text-input:focus { border-color: var(--accent); }
+
+    .send-btn {
+        flex-shrink: 0;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: var(--accent);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.3rem;
+        transition: opacity 0.15s;
+    }
+
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .status-line {
+        text-align: center;
+        font-size: 0.76rem;
+        color: var(--dim);
+        margin-top: 6px;
+        min-height: 14px;
+    }
+
+    /* ── VOICE SESSION OVERLAY ───────────────────── */
+    .voice-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.75);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .voice-overlay.active {
+        display: flex;
+    }
+
+    .voice-overlay-card {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 40px 48px;
+        text-align: center;
+        max-width: 440px;
+        width: 90%;
+    }
+
+    .voice-overlay-card h2 {
+        font-size: 1.3rem;
+        color: var(--text);
+        margin: 0 0 8px;
+    }
+
+    .voice-overlay-card p {
+        font-size: 0.9rem;
+        color: var(--dim);
+        margin: 0 0 28px;
+    }
+
+    .voice-avatar {
+        font-size: 3rem;
+        margin-bottom: 12px;
+        animation: pulse-green 1.5s infinite;
+        display: inline-block;
+    }
+
+    .voice-close-btn {
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 10px 28px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-family: inherit;
+        transition: border-color 0.15s;
+    }
+
+    .voice-close-btn:hover { border-color: var(--accent); }
+
+    /* ElevenLabs widget container — hidden inside overlay */
+    .el-widget-wrapper {
+        margin: 0 0 20px;
+    }
+
+    /* ── TABLET / MOBILE ─────────────────────────── */
+    @media (max-width: 700px) {
+        .left-panel {
+            width: 72px;
+            min-width: 72px;
+            gap: 14px;
+            padding: 16px 8px;
+        }
+        .panel-btn { width: 56px; height: 56px; font-size: 1.4rem; }
+        .chat-area { padding: 16px; }
+        .msg { font-size: 1rem; }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<!-- HEADER -->
+<div class="learn-header">
+    <a href="https://trueskills.uk" class="logo" style="font-size:1rem;">
+        <span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span>
+        <span style="color:var(--dim);font-size:0.75rem;margin-left:8px;">sales coach</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:14px;">
+        <div class="xp-badge" id="xpBadge">⚡ {{ diamond_balance }} XP</div>
+        <a href="/home" style="font-size:0.82rem;color:var(--dim);">← Back</a>
+    </div>
+</div>
+<div style="height:3px;background:var(--bg3);flex-shrink:0;">
+    <div id="timeBar" style="height:100%;background:var(--accent);width:0%;transition:width 0.8s ease;"></div>
+</div>
+<div style="text-align:right;font-size:0.72rem;color:var(--dim);padding:2px 20px 0;" id="timeLabel"></div>
+
+<!-- MAIN LAYOUT: 20% buttons | 80% chat -->
+<div class="main-layout">
+
+    <!-- LEFT PANEL — buttons -->
+    <div class="left-panel">
+
+        <!-- TALK: record voice → transcribe → Gemini → reply in chat -->
+        <button class="panel-btn" id="talkBtn" title="Talk to Max (voice to chat)">
+            🎙️
+            <span class="btn-label" id="talkLabel">Talk</span>
+        </button>
+
+        <div class="panel-divider"></div>
+
+        <!-- HEAR MAX: ElevenLabs TTS reads last Max message -->
+        <button class="panel-btn" id="hearBtn" onclick="hearMax()" title="Hear Max speak">
+            🔊
+            <span class="btn-label">Hear Max</span>
+        </button>
+
+        <div class="panel-divider"></div>
+
+        <!-- VOICE SESSION: full ElevenLabs Conversational AI agent -->
+        <button class="panel-btn" id="voiceSessionBtn" onclick="openVoiceSession()" title="Live voice session with Max">
+            🎧
+            <span class="btn-label">Voice Call</span>
+        </button>
+
+    </div>
+
+    <!-- RIGHT PANEL — chat 80% -->
+    <div class="right-panel">
+
+        <!-- CHAT AREA -->
+        <div class="chat-area" id="chatArea">
+
+            {% for msg in chat_history %}
+                {% if msg.role == 'agent' %}
+                <div class="msg msg-leo">
+                    <div class="msg-name">MAX</div>
+                    {{ msg.text | replace('<br>', '\n') | replace('<br/>', '\n') | e | replace('\n', '<br>') | safe }}
+                </div>
+                {% else %}
+                <div class="msg msg-child">{{ msg.text | e }}</div>
+                {% endif %}
+            {% else %}
+            <div class="msg msg-leo">
+                <div class="msg-name">MAX</div>
+                Good to have you here, {{ child.first_name }}. Before we get into it — tell me what you are currently selling and what your biggest challenge looks like right now.
+            </div>
+            {% endfor %}
+
+            <div class="typing-indicator" id="typingIndicator">Max is thinking...</div>
+        </div>
+
+        <!-- TEXT INPUT AREA -->
+        <div class="input-area">
+            <textarea
+                class="text-input"
+                id="textInput"
+                placeholder="Type your response here..."
+                rows="1"
+                onkeydown="handleKey(event)"
+            ></textarea>
+            <button class="send-btn" id="sendBtn" onclick="sendText()" title="Send">↑</button>
+        </div>
+        <div class="status-line" id="statusLine" style="padding: 0 24px 10px;"></div>
+
+    </div><!-- end right-panel -->
+</div><!-- end main-layout -->
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VOICE SESSION OVERLAY — ElevenLabs Conversational AI          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="voice-overlay" id="voiceOverlay">
+    <div class="voice-overlay-card">
+        <div class="voice-avatar" id="voiceAvatar">🎙️</div>
+        <h2>Live Voice Session with Max</h2>
+        <p>Your AI sales coach is listening. Speak naturally — Max will respond in real time.</p>
+        <div class="el-widget-wrapper" id="elWidgetWrapper">
+            <!-- ElevenLabs widget injected here -->
+        </div>
+        <button class="voice-close-btn" onclick="closeVoiceSession()">End Session</button>
+    </div>
+</div>
+
+<script>
+const LEARNER_NAME = {{ child.first_name | tojson }};
+const SESSION_ID   = {{ learning_session.session_id | tojson }};
+const EL_AGENT_ID  = {{ elevenlabs_agent_id | tojson }};  // set in app.py context
+
+let isRecording    = false;
+let mediaRecorder  = null;
+let audioChunks    = [];
+let heartbeatInterval = null;
+let lastMaxMessage = document.querySelector('.msg-leo')?.innerText?.replace('MAX', '').trim() || '';
+let ttsAudio       = null;
+let voiceSessionOpen = false;
+
+// ================================================================
+// TEXT CHAT
+// ================================================================
+
+function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendText();
+    }
+}
+
+async function sendText() {
+    const input = document.getElementById('textInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    addMessage('child', msg);
+    setStatus('Max is thinking...');
+    showTyping(true);
+    document.getElementById('sendBtn').disabled = true;
+
+    try {
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg }),
+        });
+        const data = await res.json();
+        showTyping(false);
+        document.getElementById('sendBtn').disabled = false;
+        setStatus('');
+
+        if (!res.ok || data.error) {
+            addMessage('leo', 'Something went wrong. Try again or refresh the page.');
+            return;
+        }
+        if (data.reply) {
+            addMessage('leo', data.reply);
+            lastMaxMessage = data.reply;
+        }
+        if (data.diamond_events) data.diamond_events.forEach(tx => showXP(tx));
+        if (data.diamond_balance !== undefined) updateXP(data.diamond_balance);
+
+    } catch (err) {
+        showTyping(false);
+        document.getElementById('sendBtn').disabled = false;
+        setStatus('Something went wrong. Try again.');
+    }
+}
+
+// ================================================================
+// VOICE TO TEXT — TALK BUTTON (records → transcribes → Gemini reply in chat)
+// ================================================================
+
+const talkBtn = document.getElementById('talkBtn');
+talkBtn.addEventListener('click', toggleTalk);
+
+async function toggleTalk() {
+    if (!isRecording) {
+        await startTalking();
+    } else {
+        stopTalking();
+    }
+}
+
+async function startTalking() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            await sendVoice();
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        talkBtn.classList.add('recording');
+        talkBtn.innerHTML = '⏹️<span class="btn-label">Stop</span>';
+        setStatus('Listening... press again when done');
+
+    } catch (err) {
+        setStatus('Microphone unavailable. Type your response instead.');
+    }
+}
+
+function stopTalking() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        talkBtn.classList.remove('recording');
+        talkBtn.innerHTML = '🎙️<span class="btn-label" id="talkLabel">Talk</span>';
+        setStatus('Got it, sending to Max...');
+    }
+}
+
+async function sendVoice() {
+    if (!audioChunks.length) { setStatus(''); return; }
+
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    const reader = new FileReader();
+
+    reader.onloadend = async () => {
+        const base64 = reader.result.split(',')[1];
+        showTyping(true);
+        setStatus('Max is thinking...');
+
+        try {
+            const res = await fetch('/voice-text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio: base64 }),
+            });
+            const data = await res.json();
+            showTyping(false);
+            setStatus('');
+
+            if (data.transcript) addMessage('child', data.transcript);
+            if (data.reply) {
+                addMessage('leo', data.reply);
+                lastMaxMessage = data.reply;
+            }
+            if (data.diamond_events) data.diamond_events.forEach(tx => showXP(tx));
+            if (data.diamond_balance !== undefined) updateXP(data.diamond_balance);
+
+        } catch (err) {
+            showTyping(false);
+            setStatus('Could not send. Try again or type instead.');
+        }
+    };
+    reader.readAsDataURL(blob);
+}
+
+// ================================================================
+// HEAR MAX — ElevenLabs TTS (reads last Max message aloud)
+// ================================================================
+
+async function hearMax() {
+    if (!lastMaxMessage) return;
+
+    const hearBtn = document.getElementById('hearBtn');
+
+    // If already playing, stop it
+    if (ttsAudio && !ttsAudio.paused) {
+        ttsAudio.pause();
+        ttsAudio.currentTime = 0;
+        ttsAudio = null;
+        hearBtn.classList.remove('playing');
+        setStatus('');
+        return;
+    }
+
+    hearBtn.classList.add('playing');
+    setStatus('Max is speaking... press 🔊 to stop');
+
+    try {
+        const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: lastMaxMessage }),
+        });
+
+        if (!res.ok) throw new Error('TTS failed');
+
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        ttsAudio   = new Audio(url);
+
+        ttsAudio.onended = () => {
+            hearBtn.classList.remove('playing');
+            setStatus('');
+            URL.revokeObjectURL(url);
+        };
+        ttsAudio.onerror = () => {
+            hearBtn.classList.remove('playing');
+            setStatus('Could not play audio.');
+        };
+
+        ttsAudio.play();
+
+    } catch (err) {
+        hearBtn.classList.remove('playing');
+        setStatus('Audio unavailable — check ElevenLabs API key.');
+    }
+}
+
+// ================================================================
+// VOICE SESSION — ElevenLabs Conversational AI Agent
+// ================================================================
+
+function openVoiceSession() {
+    if (!EL_AGENT_ID) {
+        setStatus('ElevenLabs agent not configured. Set ELEVENLABS_AGENT_ID in environment.');
+        return;
+    }
+
+    voiceSessionOpen = true;
+    document.getElementById('voiceOverlay').classList.add('active');
+
+    // Inject the ElevenLabs widget if not already there
+    const wrapper = document.getElementById('elWidgetWrapper');
+    if (!wrapper.querySelector('elevenlabs-convai')) {
+        const widget = document.createElement('elevenlabs-convai');
+        widget.setAttribute('agent-id', EL_AGENT_ID);
+        // Pass dynamic variables to personalise the agent
+        widget.setAttribute('dynamic-variables', JSON.stringify({
+            learner_name: LEARNER_NAME,
+        }));
+        wrapper.appendChild(widget);
+    }
+
+    document.getElementById('voiceSessionBtn').classList.add('voice-active');
+}
+
+function closeVoiceSession() {
+    voiceSessionOpen = false;
+    document.getElementById('voiceOverlay').classList.remove('active');
+    document.getElementById('voiceSessionBtn').classList.remove('voice-active');
+
+    // Destroy widget to end the ElevenLabs session cleanly
+    const wrapper = document.getElementById('elWidgetWrapper');
+    const existing = wrapper.querySelector('elevenlabs-convai');
+    if (existing) wrapper.removeChild(existing);
+}
+
+// ================================================================
+// UI HELPERS
+// ================================================================
+
+function addMessage(role, text) {
+    const area      = document.getElementById('chatArea');
+    const indicator = document.getElementById('typingIndicator');
+    const div       = document.createElement('div');
+
+    if (role === 'leo') {
+        div.className = 'msg msg-leo';
+        div.innerHTML = '<div class="msg-name">MAX</div>' + escHtml(text);
+    } else {
+        div.className = 'msg msg-child';
+        div.textContent = text;
+    }
+
+    area.insertBefore(div, indicator);
+    area.scrollTop = area.scrollHeight;
+}
+
+function showXP(tx) {
+    const area      = document.getElementById('chatArea');
+    const indicator = document.getElementById('typingIndicator');
+    const div       = document.createElement('div');
+    div.className   = 'xp-flash';
+    const sign      = tx.amount > 0 ? '+' : '';
+    div.textContent = sign + tx.amount + ' XP';
+    area.insertBefore(div, indicator);
+    area.scrollTop  = area.scrollHeight;
+    setTimeout(() => { div.style.opacity = '0.4'; div.style.transition = 'opacity 1s'; }, 5000);
+}
+
+function updateXP(balance) {
+    document.getElementById('xpBadge').textContent = '⚡ ' + balance + ' XP';
+}
+
+function showTyping(show) {
+    document.getElementById('typingIndicator').style.display = show ? 'block' : 'none';
+    if (show) document.getElementById('chatArea').scrollTop = document.getElementById('chatArea').scrollHeight;
+}
+
+function setStatus(text) {
+    document.getElementById('statusLine').textContent = text;
+}
+
+function escHtml(t) {
+    t = t.replace(/<br\s*\/?>/gi, '\n');
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ================================================================
+// HEARTBEAT
+// ================================================================
+
+function startHeartbeat() {
+    heartbeatInterval = setInterval(async () => {
+        try {
+            const res  = await fetch('/heartbeat', { method: 'POST' });
+            const data = await res.json();
+            if (data.diamond_events)   data.diamond_events.forEach(tx => showXP(tx));
+            if (data.diamond_balance !== undefined) updateXP(data.diamond_balance);
+            if (data.proactive_messages) {
+                data.proactive_messages.forEach(m => {
+                    addMessage('leo', m.text);
+                    lastMaxMessage = m.text;
+                });
+            }
+            if (data.active_minutes !== undefined) {
+                const pct   = Math.min(100, Math.round((data.active_minutes / 30) * 100));
+                const bar   = document.getElementById('timeBar');
+                const label = document.getElementById('timeLabel');
+                if (bar)   bar.style.width = pct + '%';
+                if (label) {
+                    label.textContent = data.hit_30_min
+                        ? '30 min ✓'
+                        : data.active_minutes + ' / 30 min';
+                    if (data.hit_30_min) label.style.color = '#4a7a4a';
+                }
+            }
+        } catch (e) {}
+    }, 60000);
+}
+
+// ================================================================
+// TEXTAREA AUTO-RESIZE
+// ================================================================
+
+const textInput = document.getElementById('textInput');
+textInput.addEventListener('input', () => {
+    textInput.style.height = 'auto';
+    textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
+});
+
+// ================================================================
+// INIT
+// ================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('chatArea').scrollTop = document.getElementById('chatArea').scrollHeight;
+    startHeartbeat();
+    textInput.focus();
+
+    const maxMsgs = document.querySelectorAll('.msg-leo');
+    if (maxMsgs.length > 0) {
+        lastMaxMessage = maxMsgs[maxMsgs.length - 1].textContent.replace('MAX', '').trim();
+    }
+});
+
+window.addEventListener('beforeunload', () => {
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
+    if (voiceSessionOpen) closeVoiceSession();
+});
+</script>
+
+{% endblock %}

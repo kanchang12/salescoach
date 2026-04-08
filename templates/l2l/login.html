@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{% if show_register %}Create account{% else %}Log in{% endif %} — TrueSkills Sales Coach{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="https://trueskills.uk" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+    <div style="font-size:0.88rem;">
+        {% if show_register %}
+            Already have an account? <a href="/login">Log in</a>
+        {% else %}
+            New here? <a href="/register">Start free trial</a>
+        {% endif %}
+    </div>
+</nav>
+
+<div class="page-center">
+    <h1 style="margin-bottom:6px;">
+        {% if show_register %}Create your account{% else %}Welcome back{% endif %}
+    </h1>
+    <p style="margin-bottom:32px;font-size:0.9rem;">
+        {% if show_register %}7-day free trial · No card required{% else %}Log in to your account{% endif %}
+    </p>
+
+    {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+    {% if success %}<div class="success-msg">{{ success }}</div>{% endif %}
+
+    <form method="POST" class="card">
+        {% if show_register %}
+        <div class="field">
+            <label>Your name</label>
+            <input type="text" name="name" required placeholder="First name is fine" autocomplete="name">
+        </div>
+        {% endif %}
+
+        <div class="field">
+            <label>Email address</label>
+            <input type="email" name="email" required placeholder="your@email.com" autocomplete="email">
+        </div>
+
+        <div class="field" style="margin-bottom:{% if show_register %}18px{% else %}24px{% endif %};">
+            <label>Password</label>
+            <input type="password" name="password" required
+                placeholder="{% if show_register %}At least 8 characters{% else %}Your password{% endif %}"
+                autocomplete="{% if show_register %}new-password{% else %}current-password{% endif %}">
+        </div>
+
+        {% if show_register %}
+        <div class="field" style="margin-bottom:24px;">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+                <input type="checkbox" name="gdpr_consent" required
+                    style="width:auto;margin-top:3px;flex-shrink:0;">
+                <span style="font-size:0.85rem;color:var(--muted);">
+                    I agree to the <a href="/privacy" target="_blank">privacy policy</a>.
+                    I understand only my name and session data is stored.
+                </span>
+            </label>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-block">
+            {% if show_register %}Create account{% else %}Log in{% endif %}
+        </button>
+    </form>
+
+    {% if not show_register %}
+    <p style="text-align:center;font-size:0.82rem;margin-top:20px;color:var(--dim);">
+        <a href="/register">Start a free trial instead</a>
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

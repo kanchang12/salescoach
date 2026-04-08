@@ -1,0 +1,49 @@
+{% extends "l2l/base.html" %}
+{% block title %}Manager Dashboard — TrueSkills Sales Coach{% endblock %}
+{% block body %}
+<nav class="topbar">
+    <a href="/" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+    <a href="/logout" style="font-size:0.85rem;">Log out</a>
+</nav>
+
+<div class="page-narrow" style="max-width:420px;margin:80px auto;padding:0 24px;">
+    <div class="card" style="padding:36px 32px;">
+        <div style="font-size:1.6rem;margin-bottom:8px;">🔒</div>
+        {% if first_time %}
+        <h1 style="font-size:1.4rem;margin-bottom:8px;">Create your dashboard password</h1>
+        <p style="font-size:0.88rem;color:var(--dim);line-height:1.65;margin-bottom:24px;">
+            This is a <strong style="color:var(--muted)">separate password</strong> from your login.
+            It protects your team's progress data from the learner view.
+        </p>
+        {% else %}
+        <h1 style="font-size:1.4rem;margin-bottom:8px;">Manager dashboard</h1>
+        <p style="font-size:0.88rem;color:var(--dim);line-height:1.65;margin-bottom:24px;">
+            Enter your dashboard password to continue.
+            This is separate from your login password.
+        </p>
+        {% endif %}
+
+        {% if error %}
+        <div class="error-msg" style="margin-bottom:16px;">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="field">
+                <label>{% if first_time %}Create{% else %}Dashboard{% endif %} password</label>
+                <input type="password" name="dashboard_password" required
+                    placeholder="{% if first_time %}Choose a password{% else %}Enter your dashboard password{% endif %}"
+                    autofocus style="font-size:1rem;padding:14px;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:1rem;margin-top:8px;">
+                {% if first_time %}Set password and open dashboard{% else %}Open dashboard{% endif %}
+            </button>
+        </form>
+
+        {% if not first_time %}
+        <div style="margin-top:20px;text-align:center;">
+            <a href="/login" style="font-size:0.82rem;color:var(--dim);">Forgot? Log out and log back in to reset</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

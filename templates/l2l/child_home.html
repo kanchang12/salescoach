@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{{ child.first_name }} — TrueSkills Sales Coach{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="https://trueskills.uk" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+    <div style="display:flex;align-items:center;gap:14px;">
+        <div class="diamond-badge">⚡ {{ child.diamond_balance }} XP</div>
+        <a href="/select-child" style="font-size:0.82rem;color:var(--dim);">Switch</a>
+    </div>
+</nav>
+
+<div class="page-center">
+
+    {% if first_time_setup %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+        padding:16px 20px;margin-bottom:24px;text-align:center;">
+        <div style="font-size:0.95rem;color:var(--text);margin-bottom:4px;">
+            Profile set. Max is ready for you at {{ preferred_time_display }}.
+        </div>
+        <div style="font-size:0.82rem;color:var(--dim);">First session XP earned just for showing up.</div>
+    </div>
+    {% endif %}
+
+    {% if login_time_status == 'early' %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+        padding:14px 20px;margin-bottom:24px;text-align:center;">
+        <div style="font-size:0.9rem;color:var(--muted);">
+            Early today. Your usual session time is {{ preferred_time_display }}.
+        </div>
+    </div>
+    {% elif login_time_status == 'late' %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+        padding:14px 20px;margin-bottom:24px;text-align:center;">
+        <div style="font-size:0.9rem;color:var(--muted);">
+            Running late — your session time is {{ preferred_time_display }}. You are here now. That counts.
+        </div>
+    </div>
+    {% endif %}
+
+    {% if streak_awards %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+        padding:16px 20px;margin-bottom:24px;text-align:center;">
+        {% for award in streak_awards %}
+        <div style="font-size:0.95rem;color:var(--text);margin-bottom:4px;">{{ award.description }}</div>
+        <div style="font-size:0.82rem;color:var(--dim);">+{{ award.amount }} XP</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if absence_result %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+        padding:16px 20px;margin-bottom:24px;text-align:center;">
+        <div style="font-size:0.95rem;color:var(--text);margin-bottom:4px;">{{ absence_result.message }}</div>
+        {% if absence_result.diamonds_awarded > 0 %}
+        <div style="font-size:0.82rem;color:var(--dim);">+{{ absence_result.diamonds_awarded }} XP</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if diamond_goal %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+        padding:16px 20px;margin-bottom:24px;">
+        <div style="font-size:0.78rem;color:var(--dim);margin-bottom:6px;">This week's target</div>
+        <div style="font-size:0.9rem;color:var(--text);margin-bottom:10px;">
+            Reach <strong>{{ diamond_goal.target_diamonds }} XP</strong> → <strong>{{ diamond_goal.treat_description }}</strong>
+        </div>
+        <div style="background:var(--bg);border-radius:8px;height:8px;overflow:hidden;">
+            <div style="background:var(--accent);height:100%;width:{{ [((child.diamond_balance / diamond_goal.target_diamonds) * 100)|int, 100]|min }}%;transition:width 0.3s;"></div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--dim);margin-top:6px;">
+            {{ child.diamond_balance }} / {{ diamond_goal.target_diamonds }} XP
+        </div>
+    </div>
+    {% endif %}
+
+    {% if login_time_status == 'on_time' and preferred_time_display and not first_time_setup %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+        padding:14px 20px;margin-bottom:24px;text-align:center;">
+        <div style="font-size:0.88rem;color:var(--muted);">
+            ✓ On schedule · Session time {{ preferred_time_display }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="margin-bottom:28px;">
+        <h1 style="margin-bottom:4px;">Ready, {{ child.first_name }}.</h1>
+        <p style="font-size:0.9rem;">
+            {{ child.year_group.replace('_', ' ').title() }} level
+            {% if child.current_streak > 1 %} · {{ child.current_streak }} session streak 🔥{% endif %}
+        </p>
+    </div>
+
+    <form method="POST" action="/start" style="margin-bottom:32px;">
+        <button type="submit" class="btn btn-primary btn-block"
+            style="font-size:1.1rem;padding:20px;">
+            Start session with Max
+        </button>
+    </form>
+
+    {% if recent_diamonds %}
+    <div class="card">
+        <div style="font-size:0.82rem;color:var(--dim);margin-bottom:12px;">Recent XP</div>
+        {% for tx in recent_diamonds %}
+        <div style="display:flex;justify-content:space-between;align-items:center;
+            padding:8px 0;border-bottom:1px solid var(--border);">
+            <div style="font-size:0.88rem;color:var(--muted);">⚡</div>
+            <div style="font-size:0.88rem;color:var(--accent);font-weight:600;flex-shrink:0;margin-left:12px;">
+                {% if tx.amount > 0 %}+{% endif %}{{ tx.amount }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

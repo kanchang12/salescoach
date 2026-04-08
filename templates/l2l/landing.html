@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+{% block title %}TrueSkills — AI Sales Coach{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="/" class="logo">
+        <span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span>
+        <span style="color:var(--dim);font-size:0.75rem;margin-left:8px;">sales coach</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:20px;">
+        <a href="/pricing" style="font-size:0.9rem;">Pricing</a>
+        <a href="/login" style="font-size:0.9rem;">Log in</a>
+        <a href="/register" class="btn btn-primary" style="padding:10px 20px;font-size:0.9rem;">Start free</a>
+    </div>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<section style="text-align:center;padding:80px 24px 64px;max-width:720px;margin:0 auto;">
+
+    <div style="display:inline-block;background:#1a2e1a;border:1px solid #2e5a2e;
+        border-radius:20px;padding:7px 18px;font-size:0.82rem;color:#7abf7a;
+        margin-bottom:24px;letter-spacing:0.3px;">
+        🎧 Voice coaching powered by ElevenLabs — speak to Max directly
+    </div>
+
+    <h1 style="font-size:2.8rem;line-height:1.15;font-weight:800;color:var(--text);margin-bottom:16px;">
+        Your personal AI sales coach.<br>Available 24 hours a day.
+    </h1>
+
+    <p style="font-size:1.15rem;font-weight:700;color:var(--muted);line-height:1.6;margin-bottom:16px;max-width:560px;margin-left:auto;margin-right:auto;">
+        Max trains you on real scenarios — cold calls, objections, negotiations, closing —
+        and gives you direct feedback, not corporate waffle.
+    </p>
+
+    <p style="font-size:0.95rem;color:var(--dim);line-height:1.7;margin-bottom:32px;max-width:520px;margin-left:auto;margin-right:auto;">
+        Built for sales professionals who want to get better between calls,
+        not wait for the next quarterly training day.
+    </p>
+
+    <div style="text-align:left;max-width:480px;margin:0 auto 40px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="flex-shrink:0;color:var(--accent);">✓</span>
+            <span style="font-size:0.9rem;color:var(--dim);line-height:1.6;"><strong style="color:var(--muted);">Roleplay any scenario.</strong> Cold calls, discovery, objections, pricing pushback, competitive comparisons. Max plays the prospect.</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="flex-shrink:0;color:var(--accent);">✓</span>
+            <span style="font-size:0.9rem;color:var(--dim);line-height:1.6;"><strong style="color:var(--muted);">Direct, honest feedback.</strong> Max tells you exactly what worked and what did not — no padding, no "great effort".</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="flex-shrink:0;color:var(--accent);">✓</span>
+            <span style="font-size:0.9rem;color:var(--dim);line-height:1.6;"><strong style="color:var(--muted);">Adapts to your sector.</strong> SaaS, pharma, financial services, construction, recruitment — Max adjusts the scenarios to your world.</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="flex-shrink:0;color:var(--accent);">✓</span>
+            <span style="font-size:0.9rem;color:var(--dim);line-height:1.6;"><strong style="color:var(--muted);">Adapts to your level.</strong> Junior rep or senior AE — Max calibrates to where you are and pushes from there.</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="flex-shrink:0;color:var(--accent);">✓</span>
+            <span style="font-size:0.9rem;color:var(--dim);line-height:1.6;"><strong style="color:var(--muted);">Text or voice.</strong> Type your responses or talk to Max live with real-time AI voice. No scripted bot — genuine coaching conversation.</span>
+        </div>
+    </div>
+
+    <a href="/register" class="btn btn-primary"
+        style="font-size:1.1rem;padding:18px 44px;display:inline-block;margin-bottom:16px;">
+        Start free — 7 days, no card
+    </a>
+    <div style="font-size:0.82rem;color:var(--dim);">
+        Prospecting · Discovery · Objection Handling · Closing · Negotiation · Account Management
+    </div>
+
+</section>
+
+<!-- ============================================================
+     THE PROBLEM
+     ============================================================ -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);padding:72px 24px;">
+    <div style="max-width:720px;margin:0 auto;">
+
+        <div style="font-size:0.78rem;color:var(--dim);letter-spacing:0.5px;
+            text-transform:uppercase;margin-bottom:16px;">The problem</div>
+        <h2 style="font-size:1.9rem;font-weight:700;margin-bottom:24px;line-height:1.25;">
+            Sales training is broken.<br>You already know it.
+        </h2>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px;">
+
+            <div class="card" style="border-left:3px solid #6a4040;">
+                <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:10px;">
+                    What you usually get
+                </div>
+                <ul style="list-style:none;padding:0;">
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">❌ Quarterly training days you forget by Friday</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">❌ Generic slides that do not match your sector</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">❌ Role plays with colleagues who go easy on you</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">❌ Feedback that avoids saying what was actually wrong</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;">❌ No practice between real calls</li>
+                </ul>
+            </div>
+
+            <div class="card" style="border-left:3px solid var(--accent);">
+                <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:10px;">
+                    What Max does instead
+                </div>
+                <ul style="list-style:none;padding:0;">
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">✓ Daily practice built around your specific scenarios</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">✓ Sector-specific — your industry, your objections</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">✓ A prospect who does not go easy on you</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--border);">✓ Precise feedback — what worked, what missed, why</li>
+                    <li style="font-size:0.9rem;color:var(--muted);padding:5px 0;">✓ Available at 6am, midnight, or between calls</li>
+                </ul>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+<!-- ============================================================
+     HOW MAX WORKS
+     ============================================================ -->
+<section style="padding:72px 24px;">
+    <div style="max-width:760px;margin:0 auto;">
+
+        <div style="font-size:0.78rem;color:var(--dim);letter-spacing:0.5px;
+            text-transform:uppercase;margin-bottom:16px;">How it works</div>
+        <h2 style="font-size:1.9rem;font-weight:700;margin-bottom:12px;">
+            Max is not a chatbot. He is a coach.
+        </h2>
+        <p style="color:var(--muted);font-size:1rem;line-height:1.7;margin-bottom:48px;max-width:560px;">
+            Most AI tools just answer questions. Max runs structured coaching sessions —
+            teach, practise, solo attempt, debrief — and remembers what you struggled with last time.
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:24px;">
+
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+                <div style="flex-shrink:0;width:44px;height:44px;background:var(--bg3);
+                    border:1px solid var(--border);border-radius:50%;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:1.1rem;font-weight:700;color:var(--muted);">1</div>
+                <div>
+                    <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:6px;">
+                        Max understands your context first
+                    </div>
+                    <p style="font-size:0.9rem;color:var(--muted);line-height:1.7;">
+                        Before any scenarios, Max asks about your sector, your current role, and
+                        your biggest challenge right now. Every session is calibrated to where you actually are.
+                    </p>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+                <div style="flex-shrink:0;width:44px;height:44px;background:var(--bg3);
+                    border:1px solid var(--border);border-radius:50%;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:1.1rem;font-weight:700;color:var(--muted);">2</div>
+                <div>
+                    <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:6px;">
+                        Max teaches the concept, then makes you use it
+                    </div>
+                    <p style="font-size:0.9rem;color:var(--muted);line-height:1.7;">
+                        Not slides. Not theory. Max explains the technique with a scenario from your sector,
+                        then puts you in the hot seat. You practice, Max gives feedback, you go again.
+                    </p>
+                    <div style="background:var(--bg3);border:1px solid var(--border);
+                        border-radius:10px;padding:14px 16px;margin-top:12px;
+                        font-size:0.88rem;color:var(--muted);font-style:italic;line-height:1.6;">
+                        "The prospect says: 'Your price is 30% higher than your competitor. Why would I pay that?'
+                        What do you say?"
+                        <div style="font-size:0.78rem;color:var(--dim);margin-top:6px;font-style:normal;">
+                            — Max running a price objection scenario for a SaaS rep
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+                <div style="flex-shrink:0;width:44px;height:44px;background:var(--bg3);
+                    border:1px solid var(--border);border-radius:50%;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:1.1rem;font-weight:700;color:var(--muted);">3</div>
+                <div>
+                    <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:6px;">
+                        Max remembers what you struggled with
+                    </div>
+                    <p style="font-size:0.9rem;color:var(--muted);line-height:1.7;">
+                        Every session is logged. Next time you log in, Max knows you struggled
+                        with closing and came back for more. He will pick up exactly where the gap is.
+                    </p>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+                <div style="flex-shrink:0;width:44px;height:44px;background:var(--bg3);
+                    border:1px solid var(--border);border-radius:50%;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:1.1rem;font-weight:700;color:var(--muted);">4</div>
+                <div>
+                    <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:6px;">
+                        Max ends every session with one action you can use today
+                    </div>
+                    <p style="font-size:0.9rem;color:var(--muted);line-height:1.7;">
+                        Not a summary report. One specific technique to try in your next real call.
+                        That is the whole point of the session.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     EIGHT SKILL TRACKS
+     ============================================================ -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);padding:72px 24px;">
+    <div style="max-width:760px;margin:0 auto;">
+
+        <div style="font-size:0.78rem;color:var(--dim);letter-spacing:0.5px;
+            text-transform:uppercase;margin-bottom:16px;">Eight skill tracks</div>
+        <h2 style="font-size:1.9rem;font-weight:700;margin-bottom:12px;">
+            The full sales cycle. All of it.
+        </h2>
+        <p style="color:var(--muted);font-size:1rem;line-height:1.7;margin-bottom:48px;">
+            Each track has structured topics, real scenarios, and a solo challenge.
+            You can work through them in order or jump to what you need most.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">📞</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Prospecting</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">ICP definition, cold outreach, LinkedIn, qualification frameworks (BANT, MEDDIC, SPICED).</p>
+            </div>
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">🔍</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Discovery</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Call structure, SPIN selling, stakeholder mapping, champion building.</p>
+            </div>
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">🎯</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Presentation</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Value proposition, demo skills, proposal writing that gets read.</p>
+            </div>
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">🛡️</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Objection Handling</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Price objections, competitor comparisons, timing pushback, stall vs. real objection.</p>
+            </div>
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">✍️</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Closing</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Trial closes, buying signals, closing techniques, next step discipline.</p>
+            </div>
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">⚖️</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Negotiation</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Preparation, anchoring, win-win structures, concession trading.</p>
+            </div>
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">🤝</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Account Management</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">QBR skills, expansion selling, churn prevention, at-risk signals.</p>
+            </div>
+
+            <div class="card" style="padding:24px 20px;">
+                <div style="font-size:1.5rem;margin-bottom:10px;">🧠</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Sales Mindset</div>
+                <p style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Rejection resilience, daily discipline, learning from lost deals.</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     VOICE
+     ============================================================ -->
+<section style="padding:72px 24px;">
+    <div style="max-width:720px;margin:0 auto;">
+
+        <div style="font-size:0.78rem;color:var(--dim);letter-spacing:0.5px;
+            text-transform:uppercase;margin-bottom:16px;">Voice coaching</div>
+        <h2 style="font-size:1.9rem;font-weight:700;margin-bottom:12px;">
+            Talk to Max. Not at him.
+        </h2>
+        <p style="color:var(--muted);font-size:1rem;line-height:1.7;margin-bottom:40px;">
+            Three ways to interact — however you work best.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:40px;">
+            <div class="card" style="text-align:center;padding:28px 16px;">
+                <div style="font-size:2rem;margin-bottom:12px;">💬</div>
+                <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:8px;">Text chat</div>
+                <div style="font-size:0.82rem;color:var(--dim);line-height:1.5;">Type your responses. Full coaching session in text.</div>
+            </div>
+            <div class="card" style="text-align:center;padding:28px 16px;">
+                <div style="font-size:2rem;margin-bottom:12px;">🎙️</div>
+                <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:8px;">Voice to chat</div>
+                <div style="font-size:0.82rem;color:var(--dim);line-height:1.5;">Speak your answer. It transcribes and Max replies in chat.</div>
+            </div>
+            <div class="card" style="text-align:center;padding:28px 16px;">
+                <div style="font-size:2rem;margin-bottom:12px;">🎧</div>
+                <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:8px;">Live voice call</div>
+                <div style="font-size:0.82rem;color:var(--dim);line-height:1.5;">Full two-way voice conversation with Max. Closest to a real call.</div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ============================================================
+     WHAT THIS IS NOT
+     ============================================================ -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);padding:72px 24px;">
+    <div style="max-width:720px;margin:0 auto;">
+
+        <div style="font-size:0.78rem;color:var(--dim);letter-spacing:0.5px;
+            text-transform:uppercase;margin-bottom:16px;">What this is not</div>
+        <h2 style="font-size:1.9rem;font-weight:700;margin-bottom:32px;">
+            Be clear on what you are getting
+        </h2>
+
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <div style="display:flex;gap:16px;padding:18px 20px;background:var(--bg3);
+                border:1px solid var(--border);border-radius:12px;">
+                <div style="font-size:1.3rem;flex-shrink:0;">✗</div>
+                <div>
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Not a CRM or sales tool</div>
+                    <p style="font-size:0.88rem;color:var(--dim);line-height:1.6;">
+                        Max does not manage your pipeline or send emails for you.
+                        He makes you better at the human side of selling — nothing else.
+                    </p>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:16px;padding:18px 20px;background:var(--bg3);
+                border:1px solid var(--border);border-radius:12px;">
+                <div style="font-size:1.3rem;flex-shrink:0;">✗</div>
+                <div>
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Not a script generator</div>
+                    <p style="font-size:0.88rem;color:var(--dim);line-height:1.6;">
+                        Max will not write your cold emails or your pitch deck.
+                        He coaches you to be better in the conversation — so you do not need a script.
+                    </p>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:16px;padding:18px 20px;background:var(--bg3);
+                border:1px solid var(--border);border-radius:12px;">
+                <div style="font-size:1.3rem;flex-shrink:0;">✗</div>
+                <div>
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Not a replacement for real calls</div>
+                    <p style="font-size:0.88rem;color:var(--dim);line-height:1.6;">
+                        Practice makes you sharper on real calls. It does not replace them.
+                        Max is your preparation — what you do with it is still down to you.
+                    </p>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:16px;padding:18px 20px;background:var(--bg3);
+                border:1px solid var(--border);border-radius:12px;">
+                <div style="font-size:1.3rem;flex-shrink:0;">✗</div>
+                <div>
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Not full of your data</div>
+                    <p style="font-size:0.88rem;color:var(--dim);line-height:1.6;">
+                        We store your first name, sector, and session history. Nothing else.
+                        No call recordings. No CRM integration. No data sold to anyone.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     FINAL CTA
+     ============================================================ -->
+<section style="padding:88px 24px;text-align:center;">
+    <div style="max-width:520px;margin:0 auto;">
+        <h2 style="font-size:2rem;font-weight:800;margin-bottom:16px;line-height:1.2;">
+            Your next call is in two hours.<br>Use the time.
+        </h2>
+        <p style="color:var(--muted);font-size:1rem;line-height:1.75;margin-bottom:36px;">
+            No credit card. No commitment. Seven days free.
+            Just Max, your scenarios, and honest feedback.
+        </p>
+        <a href="/register" class="btn btn-primary"
+            style="font-size:1.1rem;padding:18px 44px;display:inline-block;margin-bottom:20px;">
+            Start free trial
+        </a>
+        <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;">
+            <span style="font-size:0.82rem;color:var(--dim);">7 days free</span>
+            <span style="font-size:0.82rem;color:var(--dim);">No card required</span>
+            <span style="font-size:0.82rem;color:var(--dim);">Cancel anytime</span>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="border-top:1px solid var(--border);padding:24px;
+    text-align:center;font-size:0.8rem;color:var(--dim);">
+    <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:8px;">
+        <a href="/pricing">Pricing</a>
+        <a href="/privacy">Privacy policy</a>
+        <a href="/login">Log in</a>
+        <a href="/register">Start free trial</a>
+    </div>
+    trueskills.uk · LOVEUAD LTD · Company No. 16838046
+</footer>
+
+<style>
+@media (max-width: 600px) {
+    section h2 { font-size: 1.5rem !important; }
+    section h1 { font-size: 2rem !important; }
+    div[style*="grid-template-columns:1fr 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+    div[style*="grid-template-columns:1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+
+{% endblock %}

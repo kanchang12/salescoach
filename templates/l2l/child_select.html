@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Select learner — TrueSkills Sales Coach{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="https://trueskills.uk" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+    <div style="display:flex;gap:16px;align-items:center;">
+        <a href="/parent" style="font-size:0.88rem;">Manager view</a>
+        <a href="/logout" style="font-size:0.88rem;color:var(--dim);">Log out</a>
+    </div>
+</nav>
+
+<div class="page-center" style="text-align:center;">
+    <h1 style="margin-bottom:8px;">Who is coaching today?</h1>
+    <p style="margin-bottom:36px;font-size:0.9rem;">Select your profile</p>
+
+    {% for child in children %}
+    <a href="/select-child/{{ child.id }}"
+        style="display:block;margin-bottom:14px;text-decoration:none;">
+        <div class="card" style="text-align:left;display:flex;align-items:center;
+            justify-content:space-between;padding:20px 24px;
+            border-color:var(--border);transition:border-color 0.15s;"
+            onmouseover="this.style.borderColor='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border)'">
+            <div>
+                <div style="font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:2px;">
+                    {{ child.first_name }}
+                </div>
+                <div style="font-size:0.82rem;color:var(--dim);">
+                    {{ child.year_group.replace('_', ' ').title() }}
+                    {% if child.interests and child.interests.primary %}
+                     · {{ child.interests.primary.replace('_', ' ').title() }} sector
+                    {% endif %}
+                </div>
+            </div>
+            <div class="diamond-badge">
+                ⚡ {{ child.diamond_balance }} XP
+            </div>
+        </div>
+    </a>
+    {% else %}
+    <p style="color:var(--dim);margin-bottom:24px;">No profiles yet.</p>
+    {% endfor %}
+
+    <div style="margin-top:24px;">
+        <a href="/add-child" class="btn btn-ghost" style="font-size:0.88rem;">
+            + Add another learner
+        </a>
+    </div>
+</div>
+
+{% endblock %}

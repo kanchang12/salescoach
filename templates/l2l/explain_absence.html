@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Hey, we missed you — TrueSkills{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="https://trueskills.uk" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+</nav>
+
+<div class="page-center" style="text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:20px;">👋</div>
+    <h1 style="margin-bottom:12px;">Hey {{ session.child_name }}, we missed you</h1>
+    <p style="margin-bottom:36px;font-size:0.95rem;max-width:340px;margin-left:auto;margin-right:auto;">
+        Yesterday you didn't come. That's completely fine. Just tell us why.
+        There's no wrong answer here.
+    </p>
+
+    <form method="POST" class="card" style="text-align:left;">
+        <div class="field" style="margin-bottom:24px;">
+            <label style="font-size:0.95rem;color:var(--text);margin-bottom:10px;">
+                What happened yesterday?
+            </label>
+            <textarea name="reason" rows="4"
+                placeholder="I was ill... I was at a party... I just didn't want to..."
+                style="resize:none;font-size:1rem;line-height:1.5;"></textarea>
+            <div style="font-size:0.78rem;color:var(--dim);margin-top:6px;">
+                Being honest earns diamonds. Even "I just didn't want to" is worth diamonds if you're here now.
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="font-size:1rem;padding:14px;">
+            I'm here now →
+        </button>
+    </form>
+</div>
+
+{% endblock %}

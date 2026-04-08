@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Pick your session time — TrueSkills Sales Coach{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="/" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+</nav>
+
+<div class="page-center" style="text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:20px;">⏰</div>
+    <h1 style="margin-bottom:12px;">Set your daily session time, {{ child.first_name }}.</h1>
+    <p style="font-size:0.95rem;max-width:360px;margin:0 auto 32px;line-height:1.7;">
+        Pick a time you can commit to every day.
+        Even 20 minutes of focused practice compounds fast.
+        Max will be ready for you at that time.
+    </p>
+
+    {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+
+    <form method="POST" class="card" style="text-align:left;">
+        <div class="field" style="margin-bottom:8px;">
+            <label style="font-size:1rem;color:var(--text);margin-bottom:12px;">
+                What time works for you every day?
+            </label>
+            <input type="time" name="login_time" required
+                style="font-size:1.4rem;padding:16px;text-align:center;"
+                value="08:00">
+        </div>
+        <div style="font-size:0.78rem;color:var(--dim);margin-bottom:24px;padding:0 2px;">
+            You have 30 minutes either side — so if you pick 8am, anytime 7:30–8:30 counts as on schedule.
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="font-size:1rem;padding:16px;">
+            This is my time →
+        </button>
+    </form>
+
+    <p style="font-size:0.78rem;color:var(--dim);margin-top:16px;">
+        You can change this later from your profile.
+    </p>
+</div>
+
+{% endblock %}

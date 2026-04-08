@@ -1,0 +1,13 @@
+flask
+gunicorn>=21.0
+
+# PostgreSQL
+flask-sqlalchemy
+psycopg2-binary
+
+# LLM Backend — Google Gemini
+google-genai
+
+# WebSocket for Gemini Live API
+flask-sock
+simple-websocket

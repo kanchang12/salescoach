@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Admin — TrueSkills{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="https://trueskills.uk" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+    <div style="font-size:0.82rem;color:var(--dim);">
+        Admin · <a href="/admin/logout">Log out</a>
+    </div>
+</nav>
+
+<div class="page-wide">
+    <div style="margin-bottom:28px;">
+        <h1 style="margin-bottom:4px;">Admin</h1>
+        <p style="font-size:0.88rem;">{{ child_count }} children · {{ parents|length }} parent accounts</p>
+    </div>
+
+    <!-- PARENTS TABLE -->
+    <div class="card" style="margin-bottom:24px;padding:0;overflow:hidden;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+            <h2 style="font-size:1rem;">Parent accounts</h2>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                <thead>
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <th style="text-align:left;padding:10px 20px;color:var(--dim);font-weight:500;">Email</th>
+                        <th style="text-align:left;padding:10px 16px;color:var(--dim);font-weight:500;">Name</th>
+                        <th style="text-align:left;padding:10px 16px;color:var(--dim);font-weight:500;">Plan</th>
+                        <th style="text-align:left;padding:10px 16px;color:var(--dim);font-weight:500;">Joined</th>
+                        <th style="text-align:left;padding:10px 16px;color:var(--dim);font-weight:500;">Active</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for parent in parents %}
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:10px 20px;color:var(--text);">{{ parent.email }}</td>
+                    <td style="padding:10px 16px;color:var(--muted);">{{ parent.name }}</td>
+                    <td style="padding:10px 16px;">
+                        <span style="background:var(--bg3);border:1px solid var(--border);
+                            border-radius:10px;padding:2px 10px;font-size:0.78rem;color:var(--muted);">
+                            {{ parent.plan }}
+                        </span>
+                    </td>
+                    <td style="padding:10px 16px;color:var(--dim);">
+                        {{ parent.created_at.strftime('%d %b %Y') if parent.created_at }}
+                    </td>
+                    <td style="padding:10px 16px;">
+                        {% if parent.is_active %}
+                        <span style="color:#8aba8a;">Yes</span>
+                        {% else %}
+                        <span style="color:var(--dim);">No</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="padding:20px;color:var(--dim);text-align:center;">No accounts yet</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- QUICK STATS -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+        <div class="card" style="text-align:center;padding:20px;">
+            <div style="font-size:1.8rem;font-weight:700;color:var(--text);">{{ parents|length }}</div>
+            <div style="font-size:0.78rem;color:var(--dim);margin-top:4px;">Parent accounts</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px;">
+            <div style="font-size:1.8rem;font-weight:700;color:var(--text);">{{ child_count }}</div>
+            <div style="font-size:0.78rem;color:var(--dim);margin-top:4px;">Children</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px;">
+            <div style="font-size:1.8rem;font-weight:700;color:var(--text);">
+                {{ parents|selectattr('plan','equalto','trial')|list|length }}
+            </div>
+            <div style="font-size:0.78rem;color:var(--dim);margin-top:4px;">On trial</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

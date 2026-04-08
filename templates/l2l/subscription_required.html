@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Subscription required — TrueSkills{% endblock %}
+{% block body %}
+<nav class="topbar">
+    <a href="https://trueskills.uk" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+    <a href="/logout" style="font-size:0.88rem;color:var(--dim);">Log out</a>
+</nav>
+<div class="page-center" style="text-align:center;">
+    <div style="font-size:2rem;margin-bottom:20px;">⏳</div>
+    <h1 style="margin-bottom:12px;">
+        {% if parent and parent.plan == 'trial' %}
+        Your free trial has ended
+        {% else %}
+        Subscription needed
+        {% endif %}
+    </h1>
+    <p style="margin-bottom:32px;font-size:0.95rem;max-width:340px;margin-left:auto;margin-right:auto;">
+        {% if parent and parent.plan == 'trial' %}
+        Your 7-day trial is up. Choose a plan to keep going.
+        {% else %}
+        You need an active subscription to access TrueSkills.
+        {% endif %}
+    </p>
+    <a href="/pricing" class="btn btn-primary" style="font-size:1rem;padding:14px 32px;display:inline-block;">
+        See plans
+    </a>
+</div>
+{% endblock %}

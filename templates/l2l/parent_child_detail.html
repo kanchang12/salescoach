@@ -1,0 +1,349 @@
+{% extends "l2l/base.html" %}
+{% block title %}{{ child.first_name }}'s progress — TrueSkills{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+.kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:28px; }
+.kpi-card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:18px 14px; text-align:center; }
+.kpi-value { font-size:1.9rem; font-weight:800; color:var(--text); margin-bottom:4px; }
+.kpi-label { font-size:0.75rem; color:var(--dim); line-height:1.4; }
+.section-label { font-size:0.75rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+.unit-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+.unit-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.dot-done { background:#4a7a4a; }
+.dot-current { background:#c8a878; }
+.dot-todo { background:var(--bg3); border:1px solid var(--border); }
+.audit-row { padding:12px 0; border-bottom:1px solid var(--border); }
+.track-green { color:#4a7a4a; font-weight:700; }
+.track-amber { color:#9a8a4a; font-weight:700; }
+.track-red   { color:#9a4a4a; font-weight:700; }
+.tab-btn { padding:8px 16px; border-radius:8px; font-size:0.82rem; cursor:pointer; border:1px solid var(--border); background:var(--bg3); color:var(--muted); font-family:inherit; margin-right:6px; }
+.tab-btn.active { background:var(--accent); color:#f0e8e0; }
+.transcript-msg { margin:6px 0; padding:10px 14px; border-radius:10px; font-size:0.85rem; line-height:1.6; max-width:85%; }
+.transcript-msg.child { background:var(--bg3); margin-left:0; }
+.transcript-msg.leo { background:#2a2520; margin-left:auto; text-align:right; }
+@media(max-width:600px){ .kpi-grid{grid-template-columns:1fr 1fr;} }
+</style>
+{% endblock %}
+
+{% block body %}
+<nav class="topbar">
+    <a href="/" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+    <div style="display:flex;gap:12px;align-items:center;">
+        <a href="/parent" style="font-size:0.85rem;">← Dashboard</a>
+        <a href="/parent/lock" style="font-size:0.82rem;color:var(--dim);">🔒 Lock</a>
+    </div>
+</nav>
+
+<div class="page-wide">
+
+    <!-- HEADER -->
+    <div style="margin-bottom:28px;">
+        <h1 style="margin-bottom:4px;">{{ child.first_name }}</h1>
+        <p style="font-size:0.88rem;color:var(--dim);">
+            {{ child.year_group.replace('_',' ').title() }} ·
+            {{ child.current_streak }} day streak ·
+            {{ child.diamond_balance }} ◆
+        </p>
+    </div>
+
+    <!-- ON TRACK -->
+    <div class="section-label">Learning plan</div>
+    <div class="card" style="margin-bottom:28px;padding:20px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+            <div>
+                <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:4px;">
+                    {{ completed_count }} of {{ total_units }} units completed
+                </div>
+                <div style="font-size:0.85rem;color:var(--dim);">
+                    Expected by now: {{ expected_by_now }} units
+                </div>
+            </div>
+            <div style="font-size:1.1rem;">
+                {% if on_track == 'green' %}
+                <span class="track-green">✓ On track</span>
+                {% elif on_track == 'amber' %}
+                <span class="track-amber">~ Slightly behind</span>
+                {% else %}
+                <span class="track-red">⚠ Needs attention</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="background:var(--bg3);border-radius:6px;height:8px;margin-bottom:20px;">
+            <div style="background:var(--accent);border-radius:6px;height:8px;width:{{ ((completed_count/total_units)*100)|int if total_units else 0 }}%;"></div>
+        </div>
+
+        <!-- Unit list by subject -->
+        {% set subjects = ['maths','reading','coding'] %}
+        {% for subj in subjects %}
+        {% set subj_units = all_units | selectattr('subject','eq',subj) | list %}
+        {% if subj_units %}
+        <div style="margin-bottom:16px;">
+            <div style="font-size:0.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">{{ subj }}</div>
+            {% for u in subj_units %}
+            <div class="unit-row">
+                {% if u.id in completed_unit_ids %}
+                <div class="unit-dot dot-done"></div>
+                <span style="font-size:0.85rem;color:var(--dim);text-decoration:line-through;">{{ u.unit }}</span>
+                {% elif u.id == current_unit_id %}
+                <div class="unit-dot dot-current"></div>
+                <span style="font-size:0.85rem;color:var(--text);font-weight:600;">{{ u.unit }} <span style="color:var(--dim);font-weight:400;">← now</span></span>
+                {% else %}
+                <div class="unit-dot dot-todo"></div>
+                <span style="font-size:0.85rem;color:var(--dim);">{{ u.unit }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- EFFORT KPIs -->
+    <div class="section-label">This week — effort</div>
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-value">{{ total_active_mins }}</div><div class="kpi-label">minutes active</div></div>
+        <div class="kpi-card"><div class="kpi-value" style="color:var(--diamond);">{{ diamonds_this_week }}</div><div class="kpi-label">diamonds earned</div></div>
+        <div class="kpi-card"><div class="kpi-value">{{ child.current_streak }}</div><div class="kpi-label">day streak</div></div>
+        <div class="kpi-card"><div class="kpi-value">{{ total_questions_asked }}</div><div class="kpi-label">questions child asked</div></div>
+        <div class="kpi-card"><div class="kpi-value">{{ total_restarts }}</div><div class="kpi-label">tried again after failing</div></div>
+        <div class="kpi-card">
+            <div class="kpi-value">
+                {% if total_attempted_easy + total_attempted_medium + total_attempted_hard > 0 %}
+                {{ (((total_correct_easy+total_correct_medium+total_correct_hard) / (total_attempted_easy+total_attempted_medium+total_attempted_hard))*100)|int }}%
+                {% else %}—{% endif %}
+            </div>
+            <div class="kpi-label">accuracy</div>
+        </div>
+    </div>
+
+    <!-- TRENDS -->
+    <div class="section-label">Trends</div>
+    <div class="card" style="margin-bottom:28px;padding:20px;">
+        <div style="margin-bottom:16px;">
+            <button class="tab-btn active" id="tab-attempts" onclick="showTrend('attempts')">Attempts per question</button>
+            <button class="tab-btn" id="tab-curiosity" onclick="showTrend('curiosity')">Questions child asked</button>
+            <button class="tab-btn" id="tab-accuracy" onclick="showTrend('accuracy')">Accuracy by difficulty</button>
+            <button class="tab-btn" id="tab-minutes" onclick="showTrend('minutes')">Daily minutes</button>
+        </div>
+        <canvas id="trendChart" height="100"></canvas>
+        <p style="font-size:0.78rem;color:var(--dim);margin-top:10px;" id="trendNote">
+            Attempts per question going <strong>down</strong> means {{ child.first_name }} is getting better.
+        </p>
+    </div>
+
+    <!-- ACCURACY -->
+    <div class="section-label">Accuracy — by difficulty <span style="text-transform:none;letter-spacing:0;font-size:0.72rem;">({{ child.first_name }} does not see this)</span></div>
+    <div class="card" style="margin-bottom:28px;padding:20px;">
+        {% set total_attempted = total_attempted_easy + total_attempted_medium + total_attempted_hard %}
+        {% set total_correct   = total_correct_easy + total_correct_medium + total_correct_hard %}
+        {% if total_attempted > 0 %}
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:0.88rem;font-weight:600;color:var(--text);">{{ total_correct }}/{{ total_attempted }} correct this week</span>
+        </div>
+        <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--bg3);margin-bottom:10px;">
+            <div style="background:#4a7a4a;width:{{ ((total_correct_easy/total_attempted*100)|int) if total_attempted else 0 }}%;"></div>
+            <div style="background:#7a6a2a;width:{{ ((total_correct_medium/total_attempted*100)|int) if total_attempted else 0 }}%;"></div>
+            <div style="background:#5a3a7a;width:{{ ((total_correct_hard/total_attempted*100)|int) if total_attempted else 0 }}%;"></div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.78rem;color:var(--dim);">
+            <span>🟢 Easy {{ total_correct_easy }}/{{ total_attempted_easy }}</span>
+            <span>🟡 Medium {{ total_correct_medium }}/{{ total_attempted_medium }}</span>
+            <span>🟣 Hard {{ total_correct_hard }}/{{ total_attempted_hard }}</span>
+        </div>
+        {% else %}
+        <p style="font-size:0.88rem;color:var(--dim);">No accuracy data yet this week.</p>
+        {% endif %}
+    </div>
+
+    <!-- AUDIT TRAIL -->
+    <div class="section-label">Session audit trail</div>
+    <div class="card" style="margin-bottom:28px;padding:0 20px;">
+        {% if audit %}
+        {% for a in audit %}
+        <div class="audit-row">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+                <div>
+                    <div style="font-size:0.88rem;font-weight:600;color:var(--text);">
+                        {{ a.date }} · {{ a.subject }} {% if a.unit_name %}— {{ a.unit_name }}{% endif %}
+                    </div>
+                    <div style="font-size:0.78rem;color:var(--dim);margin-top:4px;">
+                        {% if a.phase_reached %}Phase reached: <strong style="color:var(--muted)">{{ a.phase_reached.replace('_',' ').title() }}</strong> · {% endif %}
+                        {{ a.active_minutes }}m active ·
+                        Leo asked {{ a.questions_by_leo }} questions ·
+                        {{ child.first_name }} asked {{ a.child_questions }} questions ·
+                        {{ a.diamonds }} ◆
+                    </div>
+                    {% if a.attempts_log %}
+                    <div style="font-size:0.75rem;color:var(--dim);margin-top:4px;">
+                        {% set total_atts = namespace(n=0) %}
+                        {% for att in a.attempts_log %}{% set total_atts.n = total_atts.n + att.get('attempts',1) %}{% endfor %}
+                        Avg attempts per question: {{ (total_atts.n / a.attempts_log|length)|round(1) if a.attempts_log else '—' }}
+                    </div>
+                    {% endif %}
+                    {% if a.homework_set %}
+                    <div style="font-size:0.78rem;color:var(--muted);margin-top:6px;">
+                        📝 Homework: {{ a.homework_set }}
+                    </div>
+                    {% endif %}
+                    {% if a.behaviour_flags %}
+                    <div style="font-size:0.75rem;color:#9a4a4a;margin-top:4px;">
+                        ⚠ {{ a.behaviour_flags | join(', ') }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if a.star_rating %}
+                <div style="font-size:1.2rem;flex-shrink:0;">
+                    {% for i in range(a.star_rating) %}⭐{% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="padding:20px 0;">
+            <p style="font-size:0.88rem;color:var(--dim);">No sessions yet. Come back after {{ child.first_name }}'s first session.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TRANSCRIPT — Connect only -->
+    {% if can_see_transcript %}
+    <div class="section-label">Session transcripts — Connect plan</div>
+    {% for a_session in recent_sessions[:5] %}
+    <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:pointer;"
+            onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display=='none'?'block':'none'">
+            <span style="font-size:0.88rem;font-weight:600;color:var(--text);">
+                {{ a_session.started_at.strftime('%a %d %b, %H:%M') if a_session.started_at else 'Session' }}
+                — {{ a_session.session_type or 'maths' }}
+            </span>
+            <span style="font-size:0.78rem;color:var(--dim);">▼ Show transcript</span>
+        </div>
+        <div style="display:none;">
+            {% for msg in (a_session.chat_log or []) %}
+            <div class="transcript-msg {{ 'child' if msg.role == 'user' else 'leo' }}">
+                <span style="font-size:0.72rem;color:var(--dim);display:block;margin-bottom:2px;">
+                    {{ 'Leo' if msg.role == 'agent' else child.first_name }}
+                </span>
+                {{ msg.text }}
+            </div>
+            {% else %}
+            <p style="font-size:0.82rem;color:var(--dim);">No messages recorded.</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="card" style="margin-bottom:28px;padding:20px 24px;border:1px dashed var(--border);">
+        <div style="font-size:0.88rem;color:var(--muted);margin-bottom:4px;font-weight:600;">Full transcripts — Connect plan</div>
+        <p style="font-size:0.85rem;color:var(--dim);line-height:1.65;">
+            Upgrade to Connect to read every conversation between Leo and {{ child.first_name }}.
+            You see exactly what was said, what questions were asked, and how Leo responded.
+        </p>
+        <a href="/pricing" style="font-size:0.82rem;color:var(--accent);">See pricing →</a>
+    </div>
+    {% endif %}
+
+    <!-- BETA FEEDBACK -->
+    <div class="section-label">Beta feedback</div>
+    <div class="card" style="margin-bottom:40px;">
+        {% if feedback_submitted %}
+        <p style="font-size:0.88rem;color:var(--muted);">Thank you. Your feedback has been received.</p>
+        {% else %}
+        <p style="font-size:0.85rem;color:var(--dim);line-height:1.65;margin-bottom:16px;">
+            Beta runs until <strong style="color:var(--muted);">15 April 2025</strong>.
+            Feedback earns you <strong style="color:var(--text);">3 months free</strong> after Beta ends.
+        </p>
+        <form method="POST" action="/parent/feedback">
+            <input type="hidden" name="child_id" value="{{ child.id }}">
+            <input type="hidden" name="child_name" value="{{ child.first_name }}">
+            <div class="field">
+                <label>Overall rating (1–5)</label>
+                <div style="display:flex;gap:12px;margin-top:6px;">
+                    {% for i in range(1,6) %}
+                    <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:0.85rem;color:var(--muted);">
+                        <input type="radio" name="rating" value="{{ i }}" style="width:auto;" required>{{ i }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="field">
+                <label>What is working?</label>
+                <textarea name="what_worked" rows="2" style="resize:none;" placeholder="e.g. loves the questions..."></textarea>
+            </div>
+            <div class="field">
+                <label>What is not working?</label>
+                <textarea name="what_didnt" rows="2" style="resize:none;" placeholder="e.g. voice button..."></textarea>
+            </div>
+            <div class="field" style="margin-bottom:20px;">
+                <label>Would you pay after Beta?</label>
+                <div style="display:flex;gap:12px;margin-top:8px;">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;color:var(--muted);"><input type="radio" name="would_pay" value="yes" style="width:auto;"> Yes</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;color:var(--muted);"><input type="radio" name="would_pay" value="maybe" style="width:auto;"> Maybe</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;color:var(--muted);"><input type="radio" name="would_pay" value="no" style="width:auto;"> No</label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding:12px 28px;font-size:0.9rem;">Send feedback</button>
+        </form>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+const attemptsData  = {{ attempts_trend }};
+const curiosityData = {{ curiosity_trend }};
+const dailyData     = {{ daily_data }};
+let currentChart    = null;
+
+const notes = {
+    attempts:  'Attempts per question going <strong>down</strong> = {{ child.first_name }} is getting better.',
+    curiosity: 'Questions the child asks Leo going <strong>up</strong> = more engaged and curious.',
+    accuracy:  'Accuracy split across difficulty levels.',
+    minutes:   'Daily active minutes. Consistency matters more than length.',
+};
+
+function showTrend(type) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + type).classList.add('active');
+    document.getElementById('trendNote').innerHTML = notes[type];
+    if (currentChart) currentChart.destroy();
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    const base = { responsive:true, plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#8a7a6a',font:{size:11}},grid:{color:'#3a3530'}},
+                y:{ticks:{color:'#8a7a6a',font:{size:11}},grid:{color:'#3a3530'},beginAtZero:true}} };
+
+    if (type === 'attempts') {
+        currentChart = new Chart(ctx, { type:'line', data:{
+            labels: attemptsData.map(d=>d.date),
+            datasets:[{label:'Avg attempts',data:attemptsData.map(d=>d.avg),
+                borderColor:'#c8a878',backgroundColor:'#c8a87822',borderWidth:2,
+                pointRadius:4,fill:true,tension:0.3}]}, options:base});
+    } else if (type === 'curiosity') {
+        currentChart = new Chart(ctx, { type:'bar', data:{
+            labels: curiosityData.map(d=>d.date),
+            datasets:[{label:'Questions asked',data:curiosityData.map(d=>d.questions),
+                backgroundColor:'#4a7a4acc',borderColor:'#4a7a4a',borderWidth:1}]}, options:base});
+    } else if (type === 'accuracy') {
+        currentChart = new Chart(ctx, { type:'bar', data:{
+            labels: dailyData.map(d=>d.date),
+            datasets:[
+                {label:'Easy',data:dailyData.map(d=>d.correct_easy),backgroundColor:'#4a7a4acc'},
+                {label:'Medium',data:dailyData.map(d=>d.correct_medium),backgroundColor:'#7a6a2acc'},
+                {label:'Hard',data:dailyData.map(d=>d.correct_hard),backgroundColor:'#5a3a7acc'},
+            ]}, options:{...base,plugins:{legend:{display:true,labels:{color:'#b5a99a',font:{size:11}}}}}});
+    } else {
+        currentChart = new Chart(ctx, { type:'line', data:{
+            labels: dailyData.map(d=>d.date),
+            datasets:[{label:'Minutes',data:dailyData.map(d=>d.active_minutes),
+                borderColor:'#7a6a5a',backgroundColor:'#7a6a5a22',borderWidth:2,
+                pointRadius:4,fill:true,tension:0.3}]}, options:base});
+    }
+}
+showTrend('attempts');
+</script>
+{% endblock %}

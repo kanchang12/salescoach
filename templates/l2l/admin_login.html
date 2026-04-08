@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Admin login — TrueSkills{% endblock %}
+{% block body %}
+
+<div class="page-center" style="padding-top:80px;">
+    <h1 style="margin-bottom:24px;">Admin</h1>
+
+    {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+
+    <form method="POST" class="card">
+        <div class="field">
+            <label>Email</label>
+            <input type="email" name="email" required autocomplete="email">
+        </div>
+        <div class="field" style="margin-bottom:24px;">
+            <label>Password</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Log in</button>
+    </form>
+</div>
+
+{% endblock %}

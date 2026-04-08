@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Set up your profile — TrueSkills Sales Coach{% endblock %}
+{% block body %}
+
+<nav class="topbar">
+    <a href="https://trueskills.uk" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span></a>
+</nav>
+
+<div class="page-center">
+    <h1 style="margin-bottom:6px;">Set up your coaching profile</h1>
+    <p style="margin-bottom:32px;font-size:0.9rem;">
+        Max uses this to calibrate every session to your sector and experience level.
+    </p>
+
+    {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+
+    <form method="POST" class="card">
+        <div class="field">
+            <label>Your first name</label>
+            <input type="text" name="first_name" required placeholder="e.g. Jordan" autocomplete="off">
+        </div>
+
+        <div class="field">
+            <label>Experience level</label>
+            <select name="year_group" required>
+                <option value="">Select your level</option>
+                <option value="junior">Junior — 0 to 2 years in sales</option>
+                <option value="mid">Mid-level — 2 to 5 years in sales</option>
+                <option value="senior">Senior — 5+ years / team lead</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label>What sector do you sell in? <span style="color:var(--dim)">(helps Max build relevant scenarios)</span></label>
+            <select name="primary_interest">
+                <option value="general">General B2B</option>
+                <option value="tech_saas">Tech / SaaS</option>
+                <option value="pharma">Pharma / Medical</option>
+                <option value="financial_services">Financial Services</option>
+                <option value="construction">Construction</option>
+                <option value="recruitment">Recruitment / Staffing</option>
+                <option value="retail">Retail</option>
+            </select>
+        </div>
+
+        <div class="field" style="margin-bottom:24px;">
+            <label>What is your biggest sales challenge right now? <span style="color:var(--dim)">(optional)</span></label>
+            <input type="text" name="secondary_interest" placeholder="e.g. price objections, cold outreach, closing"
+                autocomplete="off">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Start coaching</button>
+    </form>
+</div>
+
+{% endblock %}
