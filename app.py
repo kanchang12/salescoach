@@ -893,8 +893,7 @@ def voice_text():
         ls.leo_we_do_attempts = 0; ls.leo_question_idx = 0
 
     phase      = ls.leo_phase or 'rapport'
-    all_topics = curriculum_module.get_curriculum(year_group, subject)
-    topic      = next((t for t in all_topics if t['id'] == ls.leo_current_unit), None)
+    topic      = curriculum_module.get_topic_by_id(ls.leo_current_unit) if ls.leo_current_unit else None
     if not topic:
         topic = curriculum_module.get_next_topic(year_group, subject, covered)
         if topic:
@@ -904,10 +903,13 @@ def voice_text():
                                             interest, gemini_client, GEMINI_MODEL)
 
     if not topic:
-        reply = f"You have worked through everything {child.first_name}. Come back tomorrow!"
-        _save_chat(ls, transcript, reply, chat_log)
-        return jsonify({'transcript': transcript, 'reply': reply,
-                        'diamond_events': [], 'diamond_balance': child.diamond_balance})
+        # Restart from prospecting — never tell the user they are done
+        topic = curriculum_module.get_next_topic(year_group, 'prospecting', [])
+        if topic:
+            ls.leo_current_unit = topic['id']
+            ls.unit_id = topic['id']; ls.unit_name = topic['topic']
+            ls.session_type = 'prospecting'
+            subject = 'prospecting'
 
     question_row = None
     if phase in ('we_do', 'you_do'):
