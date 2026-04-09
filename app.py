@@ -1470,7 +1470,14 @@ def api_tts():
 
 # ── PRACTICE CALL — Gemini plays the prospect ────────────────────
 
-@app.route('/api/practice', methods=['POST'])
+@app.route('/practice', methods=['GET'])
+@child_required
+def practice_page():
+    child = Child.query.get(session['child_id'])
+    return render_template('l2l/practice.html', child=child)
+
+
+
 @child_required
 def api_practice():
     child    = Child.query.get(session['child_id'])

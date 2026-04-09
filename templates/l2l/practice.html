@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+{% block title %}Practice Call — TrueSkills Sales Coach{% endblock %}
+
+{% block head %}
+<style>
+    * { box-sizing: border-box; }
+    body {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--bg);
+    }
+
+    .practice-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        background: var(--bg);
+    }
+
+    .practice-main {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+        max-width: 760px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    /* SETUP */
+    .setup-panel {
+        padding: 32px 0;
+    }
+
+    .setup-panel h2 { margin-bottom: 8px; font-size: 1.4rem; }
+    .setup-panel p  { color: var(--dim); font-size: 0.9rem; margin-bottom: 28px; }
+
+    .scenario-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 28px;
+    }
+
+    .scenario-card {
+        padding: 16px 18px;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.15s;
+        background: var(--bg3);
+    }
+
+    .scenario-card:hover { border-color: var(--accent); }
+    .scenario-card.selected { border-color: var(--accent); background: var(--bg2); }
+
+    .scenario-card .sc-title { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .scenario-card .sc-desc  { font-size: 0.78rem; color: var(--dim); line-height: 1.4; }
+
+    /* CALL */
+    .call-panel {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .call-status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0 14px;
+        flex-shrink: 0;
+    }
+
+    .call-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.82rem;
+        color: var(--dim);
+    }
+
+    .call-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: #4caf50;
+        animation: blink 1.2s infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    .chat-area {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding-bottom: 8px;
+        scroll-behavior: smooth;
+    }
+
+    .msg {
+        max-width: 78%;
+        padding: 14px 18px;
+        border-radius: 16px;
+        font-size: 1rem;
+        line-height: 1.6;
+        word-break: break-word;
+    }
+
+    .msg-prospect {
+        align-self: flex-start;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-bottom-left-radius: 4px;
+    }
+
+    .msg-name {
+        font-size: 0.62rem;
+        color: var(--dim);
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        margin-bottom: 5px;
+    }
+
+    .msg-rep {
+        align-self: flex-end;
+        background: var(--accent);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+    }
+
+    .typing-indicator {
+        align-self: flex-start;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        border-bottom-left-radius: 4px;
+        padding: 12px 18px;
+        font-size: 0.88rem;
+        color: var(--dim);
+        font-style: italic;
+        display: none;
+    }
+
+    /* INPUT */
+    .input-row {
+        flex-shrink: 0;
+        padding: 14px 0 18px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        border-top: 1px solid var(--border);
+    }
+
+    .text-input {
+        flex: 1;
+        resize: none;
+        border-radius: 12px;
+        min-height: 48px;
+        max-height: 110px;
+        padding: 12px 16px;
+        font-size: 1rem;
+        line-height: 1.5;
+        border: 1.5px solid var(--border);
+        background: var(--bg3);
+        color: var(--text);
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+
+    .text-input:focus { border-color: var(--accent); }
+
+    .send-btn {
+        width: 48px; height: 48px;
+        border-radius: 12px;
+        background: var(--accent);
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 1.2rem;
+        transition: opacity 0.15s; flex-shrink: 0;
+    }
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .mic-btn {
+        width: 48px; height: 48px;
+        border-radius: 12px;
+        background: var(--bg3);
+        border: 1.5px solid var(--border);
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; flex-shrink: 0;
+        transition: all 0.15s;
+    }
+    .mic-btn.recording {
+        background: #3a1a1a;
+        border-color: #c05050;
+        animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+        0%,100%{ box-shadow: 0 0 0 0 rgba(192,80,80,0.3); }
+        50%     { box-shadow: 0 0 0 8px rgba(192,80,80,0); }
+    }
+
+    .status-line {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--dim);
+        min-height: 14px;
+        padding-bottom: 4px;
+    }
+
+    /* REVIEW */
+    .review-panel {
+        padding: 32px 0;
+        display: none;
+    }
+
+    .review-panel h2 { margin-bottom: 16px; font-size: 1.3rem; }
+
+    .review-box {
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        font-size: 0.95rem;
+        color: var(--text);
+        line-height: 1.85;
+        white-space: pre-wrap;
+        max-height: 60vh;
+        overflow-y: auto;
+        margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) {
+        .scenario-grid { grid-template-columns: 1fr; }
+        .msg { font-size: 0.95rem; }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<div class="practice-header">
+    <div>
+        <span style="font-size:1rem;font-weight:700;color:var(--text)">Practice Call</span>
+        <span style="font-size:0.78rem;color:var(--dim);margin-left:8px;" id="scenarioLabel"></span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+        <button id="endBtn" onclick="endCall()" class="btn btn-ghost" style="font-size:0.85rem;padding:8px 16px;display:none;">
+            End &amp; Review
+        </button>
+        <a href="/room" style="font-size:0.82rem;color:var(--dim);">← Back to coaching</a>
+    </div>
+</div>
+
+<div class="practice-main">
+
+    <!-- SETUP -->
+    <div class="setup-panel" id="setupPanel">
+        <h2>Choose your scenario</h2>
+        <p>Gemini plays the prospect. You run the call. Max reviews you at the end.</p>
+
+        <div class="scenario-grid" id="scenarioGrid">
+            <div class="scenario-card selected" data-scenario="cold call to a complete stranger who has never heard of you" onclick="selectScenario(this)">
+                <div class="sc-title">Cold call — complete stranger</div>
+                <div class="sc-desc">No warm intro. Prospect is busy. You have 30 seconds.</div>
+            </div>
+            <div class="scenario-card" data-scenario="follow-up call after sending a proposal the prospect has not responded to in 2 weeks" onclick="selectScenario(this)">
+                <div class="sc-title">Follow-up — no response</div>
+                <div class="sc-desc">You sent a proposal. Two weeks of silence. Call them.</div>
+            </div>
+            <div class="scenario-card" data-scenario="discovery call with a prospect who is also evaluating your top competitor" onclick="selectScenario(this)">
+                <div class="sc-title">Discovery — with competitor</div>
+                <div class="sc-desc">They are shopping around. Uncover their real pain first.</div>
+            </div>
+            <div class="scenario-card" data-scenario="negotiation call where the prospect is demanding a 30% discount or they will walk away" onclick="selectScenario(this)">
+                <div class="sc-title">Negotiation — price pushback</div>
+                <div class="sc-desc">Prospect wants 30% off. Defend your value without caving.</div>
+            </div>
+            <div class="scenario-card" data-scenario="closing call with a prospect who keeps saying they need more time to think" onclick="selectScenario(this)">
+                <div class="sc-title">Closing — prospect stalling</div>
+                <div class="sc-desc">Every call ends with "let me think about it". Get a decision.</div>
+            </div>
+            <div class="scenario-card" data-scenario="objection handling call where the prospect says they are perfectly happy with their current supplier" onclick="selectScenario(this)">
+                <div class="sc-title">Objection — happy with supplier</div>
+                <div class="sc-desc">Classic blocker. Find the gap they have not admitted yet.</div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" style="font-size:1rem;padding:14px;" onclick="startCall()">
+            Start Practice Call
+        </button>
+    </div>
+
+    <!-- CALL -->
+    <div class="call-panel" id="callPanel" style="display:none;">
+        <div class="call-status-bar">
+            <div class="call-badge">
+                <div class="call-dot"></div>
+                <span id="callStatusText">Prospect is ready</span>
+            </div>
+            <button onclick="endCall()" class="btn btn-ghost" style="font-size:0.82rem;padding:6px 14px;">
+                End &amp; Review
+            </button>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="typing-indicator" id="typingIndicator">Prospect is thinking...</div>
+        </div>
+
+        <div class="input-row">
+            <textarea class="text-input" id="textInput" placeholder="Your response..."
+                rows="1" onkeydown="handleKey(event)"></textarea>
+            <button class="send-btn" id="sendBtn" onclick="sendMsg()" title="Send">↑</button>
+            <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Speak">🎙️</button>
+        </div>
+        <div class="status-line" id="statusLine"></div>
+    </div>
+
+    <!-- REVIEW -->
+    <div class="review-panel" id="reviewPanel">
+        <h2>Max's Coaching Debrief</h2>
+        <div class="review-box" id="reviewBox">Analysing your call...</div>
+        <button class="btn btn-primary btn-block" onclick="window.close()" style="padding:12px;">
+            Done — close this tab
+        </button>
+    </div>
+
+</div>
+
+<script>
+const LEARNER_NAME = {{ child.first_name | tojson }};
+const INDUSTRY     = {{ (child.interests or {}).get('primary', 'general') | tojson }};
+const LEVEL        = {{ (child.year_group or 'junior') | tojson }};
+
+let callHistory  = [];
+let scenario     = '';
+let isRecording  = false;
+let mediaRecorder = null;
+let audioChunks  = [];
+let currentAudio = null;
+
+// ── SCENARIO SELECTION ───────────────────────────────────────────
+
+function selectScenario(card) {
+    document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+}
+
+// ── START CALL ───────────────────────────────────────────────────
+
+async function startCall() {
+    const selected = document.querySelector('.scenario-card.selected');
+    scenario = selected ? selected.dataset.scenario : 'a cold call';
+    document.getElementById('scenarioLabel').textContent = selected.querySelector('.sc-title').textContent;
+
+    document.getElementById('setupPanel').style.display = 'none';
+    document.getElementById('callPanel').style.display  = 'flex';
+    document.getElementById('textInput').focus();
+
+    setStatus('Prospect answering...');
+    showTyping(true);
+
+    try {
+        const res  = await fetch('/api/practice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'prospect', history: [], scenario }),
+        });
+        const data = await res.json();
+        showTyping(false);
+        setStatus('Your turn');
+        const reply = data.reply || "Yes, go ahead.";
+        callHistory.push({ role: 'prospect', text: reply });
+        addMsg('prospect', reply);
+        speak(reply, 'nova');
+    } catch(e) {
+        showTyping(false);
+        setStatus('Could not connect. Try again.');
+    }
+}
+
+// ── SEND MESSAGE ─────────────────────────────────────────────────
+
+function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+async function sendMsg() {
+    const input = document.getElementById('textInput');
+    const msg   = input.value.trim();
+    if (!msg) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    callHistory.push({ role: 'rep', text: msg });
+    addMsg('rep', msg);
+    setStatus('Prospect thinking...');
+    showTyping(true);
+    document.getElementById('sendBtn').disabled = true;
+
+    try {
+        const res  = await fetch('/api/practice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'prospect', history: callHistory, scenario }),
+        });
+        const data = await res.json();
+        showTyping(false);
+        document.getElementById('sendBtn').disabled = false;
+        setStatus('Your turn');
+        const reply = data.reply || "I see.";
+        callHistory.push({ role: 'prospect', text: reply });
+        addMsg('prospect', reply);
+        speak(reply, 'nova');
+    } catch(e) {
+        showTyping(false);
+        document.getElementById('sendBtn').disabled = false;
+        setStatus('Error. Try again.');
+    }
+}
+
+// ── END & REVIEW ─────────────────────────────────────────────────
+
+async function endCall() {
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    if (callHistory.length < 2) { window.close(); return; }
+
+    document.getElementById('callPanel').style.display   = 'none';
+    document.getElementById('reviewPanel').style.display = 'block';
+    document.getElementById('reviewBox').textContent     = 'Max is reviewing your call...';
+
+    try {
+        const res  = await fetch('/api/practice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'review', history: callHistory, scenario }),
+        });
+        const data = await res.json();
+        document.getElementById('reviewBox').textContent = data.reply || 'Good effort.';
+    } catch(e) {
+        document.getElementById('reviewBox').textContent = 'Could not load review.';
+    }
+}
+
+// ── VOICE INPUT ──────────────────────────────────────────────────
+
+async function toggleMic() {
+    const btn = document.getElementById('micBtn');
+    if (!isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks  = [];
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            mediaRecorder.onstop = async () => {
+                stream.getTracks().forEach(t => t.stop());
+                const blob   = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const b64 = reader.result.split(',')[1];
+                    setStatus('Transcribing...');
+                    try {
+                        const res  = await fetch('/voice-text', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ audio: b64, practice_mode: true }),
+                        });
+                        const data = await res.json();
+                        if (data.transcript) {
+                            document.getElementById('textInput').value = data.transcript;
+                            sendMsg();
+                        } else {
+                            setStatus('Could not hear that. Type instead.');
+                        }
+                    } catch(e) { setStatus('Transcription failed. Type instead.'); }
+                };
+                reader.readAsDataURL(blob);
+            };
+            mediaRecorder.start();
+            isRecording = true;
+            btn.classList.add('recording');
+            btn.textContent = '⏹️';
+            setStatus('Listening... press again to stop');
+        } catch(e) {
+            setStatus('Mic unavailable. Type instead.');
+        }
+    } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.classList.remove('recording');
+        btn.textContent = '🎙️';
+        setStatus('');
+    }
+}
+
+// ── TTS ──────────────────────────────────────────────────────────
+
+async function speak(text, voice) {
+    if (!text) return;
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    try {
+        const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, voice: voice || 'nova' }),
+        });
+        if (!res.ok) { browserSpeak(text); return; }
+        const blob = await res.blob();
+        if (!blob.size) { browserSpeak(text); return; }
+        const url = URL.createObjectURL(blob);
+        currentAudio = new Audio(url);
+        currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; };
+        currentAudio.onerror = () => { browserSpeak(text); };
+        currentAudio.play().catch(() => browserSpeak(text));
+    } catch(e) { browserSpeak(text); }
+}
+
+function browserSpeak(text) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 0.95;
+    const v = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('en-GB'))
+           || window.speechSynthesis.getVoices().find(v => v.lang.startsWith('en'));
+    if (v) utt.voice = v;
+    window.speechSynthesis.speak(utt);
+}
+
+// ── UI HELPERS ───────────────────────────────────────────────────
+
+function addMsg(role, text) {
+    const area = document.getElementById('chatArea');
+    const ind  = document.getElementById('typingIndicator');
+    const div  = document.createElement('div');
+    if (role === 'prospect') {
+        div.className = 'msg msg-prospect';
+        div.innerHTML = '<div class="msg-name">PROSPECT</div>' + escHtml(text);
+    } else {
+        div.className = 'msg msg-rep';
+        div.textContent = text;
+    }
+    area.insertBefore(div, ind);
+    area.scrollTop = area.scrollHeight;
+}
+
+function showTyping(show) {
+    const ind = document.getElementById('typingIndicator');
+    ind.style.display = show ? 'block' : 'none';
+    if (show) document.getElementById('chatArea').scrollTop = 99999;
+}
+
+function setStatus(text) {
+    const el = document.getElementById('statusLine');
+    if (el) el.textContent = text;
+    const cs = document.getElementById('callStatusText');
+    if (cs && text) cs.textContent = text;
+}
+
+function escHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── TEXTAREA AUTO RESIZE ─────────────────────────────────────────
+
+document.getElementById('textInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+});
+
+window.addEventListener('beforeunload', () => {
+    if (currentAudio) { currentAudio.pause(); }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+});
+</script>
+
+{% endblock %}
