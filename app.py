@@ -1409,7 +1409,7 @@ def delete_account():
 
 @app.route('/api/tts', methods=['POST'])
 def api_tts():
-    """Gemini TTS — wraps raw PCM in WAV header so browser can play it."""
+    """Gemini TTS — Charon (Max) / Kore (prospect). Returns WAV."""
     data  = request.get_json() or {}
     text  = data.get('text', '').strip()[:400]
     voice = data.get('voice', 'Charon')
@@ -1436,37 +1436,29 @@ def api_tts():
             )
         )
 
-        # Gemini returns raw PCM (16-bit signed, 24kHz, mono)
-        audio_b64 = response.candidates[0].content.parts[0].inline_data.data
-        pcm_data  = base64.b64decode(audio_b64)
+        part = response.candidates[0].content.parts[0]
+        pcm_data = base64.b64decode(part.inline_data.data)
 
-        # Build WAV container around the PCM data
-        sample_rate   = 24000
-        num_channels  = 1
-        bits_per_sample = 16
-        byte_rate     = sample_rate * num_channels * bits_per_sample // 8
-        block_align   = num_channels * bits_per_sample // 8
-        data_size     = len(pcm_data)
-        chunk_size    = 36 + data_size
-
-        wav_buf = io.BytesIO()
-        wav_buf.write(b'RIFF')
-        wav_buf.write(struct.pack('<I', chunk_size))
-        wav_buf.write(b'WAVE')
-        wav_buf.write(b'fmt ')
-        wav_buf.write(struct.pack('<I', 16))           # subchunk size
-        wav_buf.write(struct.pack('<H', 1))            # PCM format
-        wav_buf.write(struct.pack('<H', num_channels))
-        wav_buf.write(struct.pack('<I', sample_rate))
-        wav_buf.write(struct.pack('<I', byte_rate))
-        wav_buf.write(struct.pack('<H', block_align))
-        wav_buf.write(struct.pack('<H', bits_per_sample))
-        wav_buf.write(b'data')
-        wav_buf.write(struct.pack('<I', data_size))
-        wav_buf.write(pcm_data)
+        # Wrap PCM (16-bit, 24kHz, mono) in WAV container
+        sr, ch, bps = 24000, 1, 16
+        wav = io.BytesIO()
+        wav.write(b'RIFF')
+        wav.write(struct.pack('<I', 36 + len(pcm_data)))
+        wav.write(b'WAVE')
+        wav.write(b'fmt ')
+        wav.write(struct.pack('<I', 16))
+        wav.write(struct.pack('<H', 1))
+        wav.write(struct.pack('<H', ch))
+        wav.write(struct.pack('<I', sr))
+        wav.write(struct.pack('<I', sr * ch * bps // 8))
+        wav.write(struct.pack('<H', ch * bps // 8))
+        wav.write(struct.pack('<H', bps))
+        wav.write(b'data')
+        wav.write(struct.pack('<I', len(pcm_data)))
+        wav.write(pcm_data)
 
         from flask import Response
-        return Response(wav_buf.getvalue(), status=200, mimetype='audio/wav',
+        return Response(wav.getvalue(), status=200, mimetype='audio/wav',
                         headers={'Cache-Control': 'no-cache'})
     except Exception as e:
         print(f'[TTS] {e}')

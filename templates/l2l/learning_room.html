@@ -803,7 +803,8 @@ async function sendPracticeMsg() {
 }
 
 async function endPractice() {
-    if (speechSynth.speaking) speechSynth.cancel();
+    if (window.speechSynthesis && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     if (practiceHistory.length < 2) { closePractice(); return; }
 
     document.getElementById('practiceCall').style.display   = 'none';
@@ -840,7 +841,7 @@ function addPracticeMsg(role, text) {
 
 function speakPracticeMsg(text) {
     if (!text) return;
-    playGeminiTTS(text, 'Puck');  // Puck = prospect voice
+    playGeminiTTS(text, 'Kore');  // Kore = prospect voice
 }
 
 function setPracticeStatus(text) {
