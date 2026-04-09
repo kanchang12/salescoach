@@ -1474,12 +1474,13 @@ def api_tts():
 @child_required
 def practice_page():
     child = Child.query.get(session['child_id'])
-    return render_template('l2l/practice.html', child=child)
+    if request.method == 'GET':
+        return render_template('l2l/practice.html', child=child)
+    # POST — Gemini plays the prospect
+    return api_practice_logic(child)
 
 
-
-@child_required
-def api_practice():
+def api_practice_logic(child):
     child    = Child.query.get(session['child_id'])
     data     = request.get_json() or {}
     mode     = data.get('mode', 'prospect')
