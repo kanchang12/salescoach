@@ -839,7 +839,7 @@ def voice_text():
                     gtypes.Part(text='Transcribe exactly what is said. Return only the spoken words.'),
                 ])],
                 config=gtypes.GenerateContentConfig(
-                    max_output_tokens=200, temperature=0.0),
+                    max_output_tokens=540, temperature=0.0),
             )
             transcript = response.text.strip() if response.text else None
         except Exception as e:
@@ -1027,7 +1027,7 @@ Say you will work through it together step by step.
 Keep it to 2 warm sentences. Be encouraging."""),
                 ])],
                 config=gt.GenerateContentConfig(
-                    max_output_tokens=150, temperature=0.3),
+                    max_output_tokens=540, temperature=0.3),
             )
             if response.text:
                 reply = response.text.strip()
@@ -1405,64 +1405,52 @@ def delete_account():
     session.clear()
     return render_template('l2l/deletion_confirmed.html')
 
-# ── GEMINI TTS ────────────────────────────────────────────────────
+# ── TTS — Google Cloud Text-to-Speech (Neural2 voices) ───────────
 
 @app.route('/api/tts', methods=['POST'])
 def api_tts():
-    """Gemini TTS — Charon (Max) / Kore (prospect). Returns WAV."""
+    """
+    Google Cloud Text-to-Speech.
+    Voice names: en-GB-Neural2-B (Max), en-GB-Neural2-A (prospect).
+    Returns MP3 audio directly.
+    Requires: google-cloud-texttospeech, Cloud TTS API enabled in GCP.
+    """
     data  = request.get_json() or {}
     text  = data.get('text', '').strip()[:400]
-    voice = data.get('voice', 'Charon')
+    voice_id = data.get('voice', 'en-GB-Neural2-B')
     if not text:
         return jsonify({'error': 'No text'}), 400
-    if not gemini_client:
-        return jsonify({'error': 'Gemini not configured'}), 503
     try:
-        from google.genai import types
-        import base64, struct, io
+        from google.cloud import texttospeech
+        from flask import Response
 
-        response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash-preview-tts',
-            contents=text,
-            config=types.GenerateContentConfig(
-                response_modalities=['AUDIO'],
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name=voice
-                        )
-                    )
-                )
-            )
+        client = texttospeech.TextToSpeechClient()
+
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        voice_params    = texttospeech.VoiceSelectionParams(
+            language_code='en-GB',
+            name=voice_id,
+        )
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=0.95,
+            pitch=0.0,
+            effects_profile_id=['headphone-class-device'],
         )
 
-        part = response.candidates[0].content.parts[0]
-        pcm_data = base64.b64decode(part.inline_data.data)
+        response = client.synthesize_speech(
+            input=synthesis_input,
+            voice=voice_params,
+            audio_config=audio_config,
+        )
 
-        # Wrap PCM (16-bit, 24kHz, mono) in WAV container
-        sr, ch, bps = 24000, 1, 16
-        wav = io.BytesIO()
-        wav.write(b'RIFF')
-        wav.write(struct.pack('<I', 36 + len(pcm_data)))
-        wav.write(b'WAVE')
-        wav.write(b'fmt ')
-        wav.write(struct.pack('<I', 16))
-        wav.write(struct.pack('<H', 1))
-        wav.write(struct.pack('<H', ch))
-        wav.write(struct.pack('<I', sr))
-        wav.write(struct.pack('<I', sr * ch * bps // 8))
-        wav.write(struct.pack('<H', ch * bps // 8))
-        wav.write(struct.pack('<H', bps))
-        wav.write(b'data')
-        wav.write(struct.pack('<I', len(pcm_data)))
-        wav.write(pcm_data)
-
-        from flask import Response
-        return Response(wav.getvalue(), status=200, mimetype='audio/wav',
+        return Response(response.audio_content, status=200, mimetype='audio/mpeg',
                         headers={'Cache-Control': 'no-cache'})
     except Exception as e:
         print(f'[TTS] {e}')
-        return jsonify({'error': str(e)}), 500
+        # Return 503 so frontend falls back to browser speech
+        return jsonify({'error': str(e)}), 503
+
 
 
 # ── PRACTICE CALL — Gemini plays the prospect ────────────────────
@@ -1493,7 +1481,7 @@ def api_practice():
             f"SCORE: [X/10 — one sentence why]\n\n"
             f"Max 120 words. No intro. Start with WHAT WORKED:"
         )
-        reply = call_ai(system, transcript, max_tokens=200, temperature=0.3)
+        reply = call_ai(system, transcript, max_tokens=540, temperature=0.3)
         return jsonify({'reply': reply or 'Good effort. Let us debrief what happened.'})
 
     # Gemini plays the prospect

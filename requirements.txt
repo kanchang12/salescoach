@@ -11,3 +11,4 @@ google-genai
 # WebSocket for Gemini Live API
 flask-sock
 simple-websocket
+google-cloud-texttospeech

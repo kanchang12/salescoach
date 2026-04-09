@@ -641,7 +641,7 @@ async function sendVoice() {
 }
 
 // ================================================================
-// GEMINI TTS — plays audio from /api/tts with browser speech fallback
+// TTS — Google Cloud Neural2 voices, browser speech fallback
 // ================================================================
 
 let currentAudio = null;
@@ -659,7 +659,7 @@ function browserSpeak(text) {
 }
 
 async function playGeminiTTS(text, voice) {
-    voice = voice || 'Charon';
+    voice = voice || 'en-GB-Neural2-B';
     if (!text) return null;
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     try {
@@ -668,6 +668,11 @@ async function playGeminiTTS(text, voice) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, voice }),
         });
+        // 503 = TTS model not available on this API key → use browser speech
+        if (res.status === 503 || res.status === 500) {
+            browserSpeak(text);
+            return null;
+        }
         if (!res.ok) { browserSpeak(text); return null; }
         const blob = await res.blob();
         if (!blob.size) { browserSpeak(text); return null; }
@@ -678,7 +683,6 @@ async function playGeminiTTS(text, voice) {
         await currentAudio.play().catch(() => { browserSpeak(text); });
         return currentAudio;
     } catch(e) {
-        console.warn('TTS error:', e);
         browserSpeak(text);
         return null;
     }
@@ -705,7 +709,7 @@ async function hearMax() {
     hearBtn.classList.add('playing');
     setStatus('Max is speaking...');
 
-    const audio = await playGeminiTTS(lastMaxMessage, 'Charon');
+    const audio = await playGeminiTTS(lastMaxMessage, 'en-GB-Neural2-B');
     if (audio) {
         const origEnd = audio.onended;
         audio.onended = () => { if(origEnd) origEnd(); hearBtn.classList.remove('playing'); setStatus(''); };
@@ -839,9 +843,9 @@ function addPracticeMsg(role, text) {
     area.scrollTop = area.scrollHeight;
 }
 
-function speakPracticeMsg(text) {
+async function speakPracticeMsg(text) {
     if (!text) return;
-    playGeminiTTS(text, 'Kore');  // Kore = prospect voice
+    await playGeminiTTS(text, 'en-GB-Neural2-A');
 }
 
 function setPracticeStatus(text) {
