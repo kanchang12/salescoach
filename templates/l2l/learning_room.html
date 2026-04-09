@@ -773,35 +773,54 @@ async function startMic() {
         elAudioCtx  = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
         elMicStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 }, video: false });
 
-        const source = elAudioCtx.createMediaStreamSource(elMicStream);
-        elMicProcessor = elAudioCtx.createScriptProcessor(4096, 1, 1);
+        // AudioWorklet processor inline as a Blob — no separate file needed
+        const workletCode = `
+            class PCMProcessor extends AudioWorkletProcessor {
+                process(inputs) {
+                    const input = inputs[0];
+                    if (input && input[0]) {
+                        this.port.postMessage(input[0]);
+                    }
+                    return true;
+                }
+            }
+            registerProcessor('pcm-processor', PCMProcessor);
+        `;
+        const blob = new Blob([workletCode], { type: 'application/javascript' });
+        const url  = URL.createObjectURL(blob);
+        await elAudioCtx.audioWorklet.addModule(url);
+        URL.revokeObjectURL(url);
 
-        elMicProcessor.onaudioprocess = (e) => {
+        const source    = elAudioCtx.createMediaStreamSource(elMicStream);
+        elMicProcessor  = new AudioWorkletNode(elAudioCtx, 'pcm-processor');
+
+        elMicProcessor.port.onmessage = (e) => {
             if (!elSocket || elSocket.readyState !== WebSocket.OPEN) return;
-            const float32 = e.inputBuffer.getChannelData(0);
-            // Convert to 16-bit PCM
-            const int16 = new Int16Array(float32.length);
+            const float32 = e.data;
+            const int16   = new Int16Array(float32.length);
             for (let i = 0; i < float32.length; i++) {
                 int16[i] = Math.max(-32768, Math.min(32767, float32[i] * 32768));
             }
-            // Base64 encode and send
             const bytes = new Uint8Array(int16.buffer);
-            let binary = '';
+            let binary  = '';
             for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-            elSocket.send(JSON.stringify({
-                user_audio_chunk: btoa(binary)
-            }));
+            elSocket.send(JSON.stringify({ user_audio_chunk: btoa(binary) }));
         };
 
         source.connect(elMicProcessor);
         elMicProcessor.connect(elAudioCtx.destination);
+
     } catch(err) {
         setVoiceStatus('Microphone error: ' + err.message);
     }
 }
 
 function stopMic() {
-    if (elMicProcessor) { elMicProcessor.disconnect(); elMicProcessor = null; }
+    if (elMicProcessor) {
+        elMicProcessor.port.onmessage = null;
+        elMicProcessor.disconnect();
+        elMicProcessor = null;
+    }
     if (elMicStream)    { elMicStream.getTracks().forEach(t => t.stop()); elMicStream = null; }
     if (elAudioCtx)     { elAudioCtx.close(); elAudioCtx = null; }
 }
