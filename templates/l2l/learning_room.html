@@ -764,7 +764,7 @@ async function startPractice() {
     // Gemini opens the call as the prospect
     setPracticeStatus('Prospect is answering...');
     try {
-        const res  = await fetch('/api/practice', {
+        const res  = await fetch('/practice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'prospect', history: [], scenario: practiceScenario }),
@@ -791,7 +791,7 @@ async function sendPracticeMsg() {
     setPracticeStatus('Prospect is thinking...');
 
     try {
-        const res  = await fetch('/api/practice', {
+        const res  = await fetch('/practice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'prospect', history: practiceHistory, scenario: practiceScenario }),
@@ -817,7 +817,7 @@ async function endPractice() {
     document.getElementById('practiceReviewText').textContent = 'Max is reviewing your call...';
 
     try {
-        const res  = await fetch('/api/practice', {
+        const res  = await fetch('/practice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'review', history: practiceHistory, scenario: practiceScenario }),
