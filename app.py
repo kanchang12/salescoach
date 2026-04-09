@@ -1497,14 +1497,14 @@ def api_practice_logic(child):
         system = (
             f"You are Max, a blunt sales coach debriefing a practice call.\n"
             f"Rep level: {level}. Sector: {industry.replace('_',' ')}. Scenario: {scenario}\n\n"
-            f"Write EXACTLY this structure, no extra words:\n"
-            f"WHAT WORKED: [one sentence — specific, not vague]\n"
-            f"BIGGEST MISS: [one sentence — the single thing that would have lost the deal]\n"
-            f"THE FIX: [one concrete technique with an example phrase they could have used]\n"
-            f"SCORE: [X/10 — one sentence why]\n\n"
-            f"Max 120 words. No intro. Start with WHAT WORKED:"
+            f"Write exactly this structure:\n"
+            f"WHAT WORKED: one specific sentence\n"
+            f"BIGGEST MISS: one specific sentence\n"
+            f"THE FIX: one technique with an example phrase\n"
+            f"SCORE: X/10 — one sentence reason\n\n"
+            f"Be direct. No intro. Start immediately with WHAT WORKED:"
         )
-        reply = call_ai(system, transcript, max_tokens=540, temperature=0.3)
+        reply = call_ai(system, transcript, max_tokens=1024, temperature=0.3)
         return jsonify({'reply': reply or 'Good effort. Let us debrief what happened.'})
 
     # Gemini plays the prospect
@@ -1542,7 +1542,24 @@ def api_practice_logic(child):
     )
 
     user_msg = f"Salesperson said: {last_rep}" if last_rep else "The salesperson just called."
-    reply = call_ai(system, user_msg, max_tokens=540, temperature=0.7)
+    # Use gemini-2.0-flash for prospect — faster response time
+    if gemini_client:
+        try:
+            from google.genai import types as _t
+            _r = gemini_client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=user_msg,
+                config=_t.GenerateContentConfig(
+                    system_instruction=system,
+                    max_output_tokens=80,
+                    temperature=0.7,
+                ),
+            )
+            reply = _r.text.strip() if _r.text else None
+        except Exception:
+            reply = call_ai(system, user_msg, max_tokens=80, temperature=0.7)
+    else:
+        reply = call_ai(system, user_msg, max_tokens=80, temperature=0.7)
 
     # Strip any remaining brackets/placeholders
     import re
