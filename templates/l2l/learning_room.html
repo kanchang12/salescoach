@@ -18,7 +18,6 @@
         display: block !important;
         width: 100% !important;
     }
-
 <style>
     * { box-sizing: border-box; }
 
@@ -829,33 +828,39 @@ textInput.addEventListener('input', () => {
 });
 
 // ================================================================
-// HIDE ELEVENLABS DEFAULT FLOATING WIDGET
+// KILL ELEVENLABS FLOATING WIDGET — MutationObserver
+// Hides the bottom-right "Need help? Start a call" bubble the
+// moment ElevenLabs injects it into the DOM, without touching
+// the widget inside our own overlay.
 // ================================================================
 
-function hideELWidget() {
-    // Target the default floating launcher injected by the script
-    const selectors = [
-        'elevenlabs-convai',
-        '[class*="convai-launcher"]',
-        '[id*="convai-launcher"]',
-        '[class*="elevenlabs-launcher"]',
-    ];
-    selectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => {
-            // Only hide if it is NOT inside our overlay
-            if (!document.getElementById('elWidgetWrapper').contains(el)) {
-                el.style.cssText = 'display:none!important;visibility:hidden!important;';
-            }
+(function() {
+    const wrapper = document.getElementById('elWidgetWrapper');
+
+    function killFloatingWidget(node) {
+        if (!node || !node.tagName) return;
+        const tag = node.tagName.toLowerCase();
+        const isEL = tag === 'elevenlabs-convai'
+            || (node.id && node.id.includes('elevenlabs'))
+            || (node.className && typeof node.className === 'string' && node.className.includes('elevenlabs'));
+        if (isEL && !wrapper.contains(node)) {
+            node.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;left:-9999px!important;';
+        }
+    }
+
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(m => {
+            m.addedNodes.forEach(node => killFloatingWidget(node));
         });
     });
-}
 
-// Run on load and after a short delay to catch async injection
-document.addEventListener('DOMContentLoaded', () => {
-    hideELWidget();
-    setTimeout(hideELWidget, 1000);
-    setTimeout(hideELWidget, 3000);
-});
+    observer.observe(document.body, { childList: true, subtree: false });
+
+    // Also run immediately in case it already exists
+    document.querySelectorAll('elevenlabs-convai').forEach(el => {
+        if (!wrapper.contains(el)) killFloatingWidget(el);
+    });
+})();
 
 // ================================================================
 // INIT
