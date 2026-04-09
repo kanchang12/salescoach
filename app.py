@@ -1407,6 +1407,55 @@ def delete_account():
     session.clear()
     return render_template('l2l/deletion_confirmed.html')
 
+# ── ELEVENLABS API ROUTES ────────────────────────────────────────
+
+@app.route('/api/tts', methods=['POST'])
+def api_tts():
+    """ElevenLabs TTS — reads Max's last message aloud."""
+    import requests as req_lib
+    data = request.get_json() or {}
+    text = data.get('text', '').strip()[:500]
+    if not text:
+        return jsonify({'error': 'No text'}), 400
+    if not ELEVENLABS_API_KEY:
+        return jsonify({'error': 'ElevenLabs API key not set'}), 503
+    try:
+        r = req_lib.post(
+            f'https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}',
+            headers={'xi-api-key': ELEVENLABS_API_KEY, 'Content-Type': 'application/json'},
+            json={'text': text, 'model_id': 'eleven_turbo_v2_5',
+                  'voice_settings': {'stability': 0.55, 'similarity_boost': 0.75}},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return jsonify({'error': 'TTS error'}), 502
+        from flask import Response
+        return Response(r.content, status=200, mimetype='audio/mpeg',
+                        headers={'Cache-Control': 'no-cache'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/el-signed-url', methods=['POST'])
+def api_el_signed_url():
+    """Get a signed WebSocket URL from ElevenLabs for direct Conversational AI."""
+    import requests as req_lib
+    if not ELEVENLABS_API_KEY or not ELEVENLABS_AGENT_ID:
+        return jsonify({'error': 'ElevenLabs not configured'}), 503
+    try:
+        r = req_lib.get(
+            f'https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id={ELEVENLABS_AGENT_ID}',
+            headers={'xi-api-key': ELEVENLABS_API_KEY},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return jsonify({'error': f'ElevenLabs error: {r.status_code}'}), 502
+        data = r.json()
+        return jsonify({'signed_url': data.get('signed_url', '')})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # ── LANDING + SHORT REDIRECTS ────────────────────────────────────
 @app.route('/', methods=['GET','POST'])
 def index():

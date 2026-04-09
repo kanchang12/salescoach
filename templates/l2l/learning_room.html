@@ -2,22 +2,8 @@
 {% block title %}Session with Max — TrueSkills Sales Coach{% endblock %}
 
 {% block head %}
-<!-- ElevenLabs Conversational AI Widget -->
-<script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script>
-
 <style>
-    /* Hide ONLY the default floating bottom-right launcher — not our overlay widget */
-    body > elevenlabs-convai,
-    body > [class*="elevenlabs-convai"],
-    body > [id*="elevenlabs-convai"] {
-        display: none !important;
-    }
-
-    /* Make the widget inside our overlay fill the space properly */
-    #elWidgetWrapper elevenlabs-convai {
-        display: block !important;
-        width: 100% !important;
-    }
+    /* No ElevenLabs widget — using direct API */
 <style>
     * { box-sizing: border-box; }
 
@@ -452,19 +438,16 @@
 </div><!-- end main-layout -->
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- VOICE SESSION OVERLAY — ElevenLabs Conversational AI          -->
+<!-- VOICE SESSION OVERLAY — ElevenLabs Direct API                 -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div class="voice-overlay" id="voiceOverlay">
     <div class="voice-overlay-card">
         <div class="voice-avatar" id="voiceAvatar">🎙️</div>
         <h2>Live Voice Session with Max</h2>
-        <p>Your AI sales coach is listening. Speak naturally — Max will respond in real time.</p>
-        <div class="el-widget-wrapper" id="elWidgetWrapper">
-            <!-- ElevenLabs widget injected and auto-started here -->
-        </div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-            <button class="voice-close-btn" onclick="closeVoiceSession()">End Session</button>
-        </div>
+        <p id="voiceStatus">Connecting to Max...</p>
+        <div id="voiceOrb" style="width:80px;height:80px;border-radius:50%;background:#1a3a2a;border:2px solid #4caf50;margin:16px auto;display:flex;align-items:center;justify-content:center;font-size:2rem;transition:all 0.2s;">🎙️</div>
+        <div style="font-size:0.8rem;color:var(--dim);margin-bottom:20px;" id="voiceTranscript"></div>
+        <button class="voice-close-btn" onclick="closeVoiceSession()">End Session</button>
     </div>
 </div>
 
@@ -678,59 +661,176 @@ async function hearMax() {
 // VOICE SESSION — ElevenLabs Conversational AI Agent
 // ================================================================
 
-function openVoiceSession() {
+// ================================================================
+// VOICE SESSION — ElevenLabs Conversational AI Direct API
+// Uses WebSocket — no widget, no floating bubble
+// ================================================================
+
+let elSocket       = null;
+let elAudioCtx     = null;
+let elMicStream    = null;
+let elMicProcessor = null;
+let elAudioQueue   = [];
+let elPlaying      = false;
+
+function setVoiceStatus(msg) {
+    const el = document.getElementById('voiceStatus');
+    if (el) el.textContent = msg;
+}
+
+function setVoiceOrb(state) {
+    const orb = document.getElementById('voiceOrb');
+    if (!orb) return;
+    if (state === 'listening') {
+        orb.style.borderColor = '#4caf50';
+        orb.style.background  = '#1a3a2a';
+        orb.style.boxShadow   = '0 0 16px rgba(76,175,80,0.5)';
+        orb.textContent = '🎙️';
+    } else if (state === 'speaking') {
+        orb.style.borderColor = '#2196f3';
+        orb.style.background  = '#1a2a3a';
+        orb.style.boxShadow   = '0 0 16px rgba(33,150,243,0.5)';
+        orb.textContent = '🔊';
+    } else {
+        orb.style.borderColor = '#555';
+        orb.style.background  = '#222';
+        orb.style.boxShadow   = 'none';
+        orb.textContent = '⏳';
+    }
+}
+
+async function openVoiceSession() {
     if (!EL_AGENT_ID) {
-        setStatus('ElevenLabs agent not configured. Set ELEVENLABS_AGENT_ID in environment.');
+        setStatus('Set ELEVENLABS_AGENT_ID in your Cloud Run environment variables.');
         return;
     }
 
     voiceSessionOpen = true;
     document.getElementById('voiceOverlay').classList.add('active');
-
-    // Inject the ElevenLabs widget if not already there
-    const wrapper = document.getElementById('elWidgetWrapper');
-    let widget = wrapper.querySelector('elevenlabs-convai');
-    if (!widget) {
-        widget = document.createElement('elevenlabs-convai');
-        widget.setAttribute('agent-id', EL_AGENT_ID);
-        widget.setAttribute('dynamic-variables', JSON.stringify({
-            learner_name: LEARNER_NAME,
-        }));
-        wrapper.appendChild(widget);
-    }
-
-    // Auto-click the widget's start button once it is ready
-    // The widget renders a button internally — we trigger it after a short delay
-    setTimeout(() => {
-        try {
-            // Try the programmatic API first
-            if (typeof widget.startSession === 'function') {
-                widget.startSession();
-                return;
-            }
-            // Fallback: find and click the internal start/call button
-            const shadow = widget.shadowRoot;
-            if (shadow) {
-                const btn = shadow.querySelector('button[class*="start"], button[class*="call"], button[aria-label*="start"], button[aria-label*="call"], button');
-                if (btn) btn.click();
-            }
-        } catch(e) {
-            // Widget will still show — user can click Start a call manually
-        }
-    }, 800);
-
     document.getElementById('voiceSessionBtn').classList.add('voice-active');
+    setVoiceStatus('Connecting to Max...');
+    setVoiceOrb('idle');
+
+    try {
+        // Step 1: Get signed URL from our backend
+        const res = await fetch('/api/el-signed-url', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok || !data.signed_url) {
+            setVoiceStatus('Could not connect. Check ElevenLabs API key.');
+            return;
+        }
+
+        // Step 2: Open WebSocket to ElevenLabs
+        elSocket = new WebSocket(data.signed_url);
+        elSocket.binaryType = 'arraybuffer';
+
+        elSocket.onopen = async () => {
+            setVoiceStatus('Max is ready. Speak now.');
+            setVoiceOrb('listening');
+            await startMic();
+        };
+
+        elSocket.onmessage = async (event) => {
+            if (typeof event.data === 'string') {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'agent_response' && msg.agent_response_event?.agent_response) {
+                        const text = msg.agent_response_event.agent_response;
+                        document.getElementById('voiceTranscript').textContent = 'Max: ' + text;
+                        addMessage('leo', text);
+                        lastMaxMessage = text;
+                    }
+                    if (msg.type === 'user_transcript' && msg.user_transcription_event?.user_transcript) {
+                        document.getElementById('voiceTranscript').textContent = 'You: ' + msg.user_transcription_event.user_transcript;
+                    }
+                } catch(e) {}
+            } else {
+                // Binary audio from ElevenLabs — play it
+                setVoiceOrb('speaking');
+                elAudioQueue.push(event.data);
+                if (!elPlaying) playNextAudio();
+            }
+        };
+
+        elSocket.onerror = () => {
+            setVoiceStatus('Connection error. Try again.');
+            setVoiceOrb('idle');
+        };
+
+        elSocket.onclose = () => {
+            setVoiceStatus('Session ended.');
+            setVoiceOrb('idle');
+            stopMic();
+        };
+
+    } catch(err) {
+        setVoiceStatus('Failed to connect: ' + err.message);
+    }
+}
+
+async function startMic() {
+    try {
+        elAudioCtx  = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        elMicStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 }, video: false });
+
+        const source = elAudioCtx.createMediaStreamSource(elMicStream);
+        elMicProcessor = elAudioCtx.createScriptProcessor(4096, 1, 1);
+
+        elMicProcessor.onaudioprocess = (e) => {
+            if (!elSocket || elSocket.readyState !== WebSocket.OPEN) return;
+            const float32 = e.inputBuffer.getChannelData(0);
+            // Convert to 16-bit PCM
+            const int16 = new Int16Array(float32.length);
+            for (let i = 0; i < float32.length; i++) {
+                int16[i] = Math.max(-32768, Math.min(32767, float32[i] * 32768));
+            }
+            // Base64 encode and send
+            const bytes = new Uint8Array(int16.buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            elSocket.send(JSON.stringify({
+                user_audio_chunk: btoa(binary)
+            }));
+        };
+
+        source.connect(elMicProcessor);
+        elMicProcessor.connect(elAudioCtx.destination);
+    } catch(err) {
+        setVoiceStatus('Microphone error: ' + err.message);
+    }
+}
+
+function stopMic() {
+    if (elMicProcessor) { elMicProcessor.disconnect(); elMicProcessor = null; }
+    if (elMicStream)    { elMicStream.getTracks().forEach(t => t.stop()); elMicStream = null; }
+    if (elAudioCtx)     { elAudioCtx.close(); elAudioCtx = null; }
+}
+
+async function playNextAudio() {
+    if (!elAudioQueue.length) { elPlaying = false; setVoiceOrb('listening'); return; }
+    elPlaying = true;
+    const raw = elAudioQueue.shift();
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const buf = await ctx.decodeAudioData(raw.slice(0));
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.onended = () => { ctx.close(); playNextAudio(); };
+        src.start();
+    } catch(e) {
+        playNextAudio();
+    }
 }
 
 function closeVoiceSession() {
     voiceSessionOpen = false;
     document.getElementById('voiceOverlay').classList.remove('active');
     document.getElementById('voiceSessionBtn').classList.remove('voice-active');
-
-    // Destroy widget to end the ElevenLabs session cleanly
-    const wrapper = document.getElementById('elWidgetWrapper');
-    const existing = wrapper.querySelector('elevenlabs-convai');
-    if (existing) wrapper.removeChild(existing);
+    stopMic();
+    if (elSocket) { elSocket.close(); elSocket = null; }
+    elAudioQueue = [];
+    elPlaying    = false;
 }
 
 // ================================================================
@@ -826,41 +926,6 @@ textInput.addEventListener('input', () => {
     textInput.style.height = 'auto';
     textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
 });
-
-// ================================================================
-// KILL ELEVENLABS FLOATING WIDGET — MutationObserver
-// Hides the bottom-right "Need help? Start a call" bubble the
-// moment ElevenLabs injects it into the DOM, without touching
-// the widget inside our own overlay.
-// ================================================================
-
-(function() {
-    const wrapper = document.getElementById('elWidgetWrapper');
-
-    function killFloatingWidget(node) {
-        if (!node || !node.tagName) return;
-        const tag = node.tagName.toLowerCase();
-        const isEL = tag === 'elevenlabs-convai'
-            || (node.id && node.id.includes('elevenlabs'))
-            || (node.className && typeof node.className === 'string' && node.className.includes('elevenlabs'));
-        if (isEL && !wrapper.contains(node)) {
-            node.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;left:-9999px!important;';
-        }
-    }
-
-    const observer = new MutationObserver(mutations => {
-        mutations.forEach(m => {
-            m.addedNodes.forEach(node => killFloatingWidget(node));
-        });
-    });
-
-    observer.observe(document.body, { childList: true, subtree: false });
-
-    // Also run immediately in case it already exists
-    document.querySelectorAll('elevenlabs-convai').forEach(el => {
-        if (!wrapper.contains(el)) killFloatingWidget(el);
-    });
-})();
 
 // ================================================================
 // INIT
