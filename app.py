@@ -32,6 +32,7 @@ init_db(app)
 
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
 
 gemini_client = None
@@ -825,12 +826,26 @@ def voice_text():
     if not audio_b64:
         return jsonify({'error': 'No audio'}), 400
 
-    # Transcribe
+    # Transcribe via OpenAI Whisper (fastest available)
     transcript = None
-    if gemini_client:
-        try:
+    try:
+        import requests as req_lib
+        audio_bytes = base64.b64decode(audio_b64)
+        if OPENAI_API_KEY:
+            r = req_lib.post(
+                'https://api.openai.com/v1/audio/transcriptions',
+                headers={'Authorization': f'Bearer {OPENAI_API_KEY}'},
+                files={'file': ('audio.webm', audio_bytes, 'audio/webm')},
+                data={'model': 'whisper-1', 'language': 'en'},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                transcript = r.json().get('text', '').strip()
+            else:
+                print(f'[WHISPER] {r.status_code} {r.text[:100]}')
+        if not transcript and gemini_client:
+            # Fallback to Gemini if no OpenAI key
             from google.genai import types as gtypes
-            audio_bytes = base64.b64decode(audio_b64)
             response = gemini_client.models.generate_content(
                 model=GEMINI_MODEL,
                 contents=[gtypes.Content(parts=[
@@ -838,12 +853,11 @@ def voice_text():
                         mime_type='audio/webm', data=audio_bytes)),
                     gtypes.Part(text='Transcribe exactly what is said. Return only the spoken words.'),
                 ])],
-                config=gtypes.GenerateContentConfig(
-                    max_output_tokens=540, temperature=0.0),
+                config=gtypes.GenerateContentConfig(max_output_tokens=540, temperature=0.0),
             )
             transcript = response.text.strip() if response.text else None
-        except Exception as e:
-            print(f"[TRANSCRIBE] {e}")
+    except Exception as e:
+        print(f'[TRANSCRIBE] {e}')
 
     if not transcript:
         return jsonify({'error': 'Could not understand. Try typing instead.'}), 200
@@ -1405,51 +1419,52 @@ def delete_account():
     session.clear()
     return render_template('l2l/deletion_confirmed.html')
 
-# ── TTS — Google Cloud Text-to-Speech (Neural2 voices) ───────────
+# ── TTS — OpenAI tts-1-hd (premium voices) ──────────────────────
 
 @app.route('/api/tts', methods=['POST'])
 def api_tts():
     """
-    Google Cloud Text-to-Speech.
-    Voice names: en-GB-Neural2-B (Max), en-GB-Neural2-A (prospect).
-    Returns MP3 audio directly.
-    Requires: google-cloud-texttospeech, Cloud TTS API enabled in GCP.
+    OpenAI TTS — tts-1-hd.
+    Max:      onyx  (deep authoritative male)
+    Prospect: nova  (natural female)
+    Falls back 503 so frontend uses browser speech.
     """
-    data  = request.get_json() or {}
-    text  = data.get('text', '').strip()[:400]
-    voice_id = data.get('voice', 'en-GB-Neural2-B')
+    import requests as req_lib
+    data     = request.get_json() or {}
+    text     = data.get('text', '').strip()[:400]
+    voice_id = data.get('voice', 'onyx')
     if not text:
         return jsonify({'error': 'No text'}), 400
+    if not OPENAI_API_KEY:
+        return jsonify({'error': 'OPENAI_API_KEY not set'}), 503
     try:
-        from google.cloud import texttospeech
+        r = req_lib.post(
+            'https://api.openai.com/v1/audio/speech',
+            headers={
+                'Authorization': f'Bearer {OPENAI_API_KEY}',
+                'Content-Type':  'application/json',
+            },
+            json={
+                'model': 'tts-1-hd',
+                'input': text,
+                'voice': voice_id,
+                'response_format': 'mp3',
+                'speed': 0.95,
+            },
+            timeout=15,
+        )
+        if r.status_code != 200:
+            print(f'[TTS] OpenAI error: {r.status_code} {r.text[:200]}')
+            return jsonify({'error': 'TTS failed'}), 503
         from flask import Response
-
-        client = texttospeech.TextToSpeechClient()
-
-        synthesis_input = texttospeech.SynthesisInput(text=text)
-        voice_params    = texttospeech.VoiceSelectionParams(
-            language_code='en-GB',
-            name=voice_id,
-        )
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=0.95,
-            pitch=0.0,
-            effects_profile_id=['headphone-class-device'],
-        )
-
-        response = client.synthesize_speech(
-            input=synthesis_input,
-            voice=voice_params,
-            audio_config=audio_config,
-        )
-
-        return Response(response.audio_content, status=200, mimetype='audio/mpeg',
+        return Response(r.content, status=200, mimetype='audio/mpeg',
                         headers={'Cache-Control': 'no-cache'})
     except Exception as e:
         print(f'[TTS] {e}')
-        # Return 503 so frontend falls back to browser speech
         return jsonify({'error': str(e)}), 503
+
+
+
 
 
 

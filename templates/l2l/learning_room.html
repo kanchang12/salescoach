@@ -519,7 +519,7 @@ async function sendText() {
     input.value = '';
     input.style.height = 'auto';
     addMessage('child', msg);
-    setStatus('Max is thinking...');
+    setStatus('');
     showTyping(true);
     document.getElementById('sendBtn').disabled = true;
 
@@ -532,15 +532,16 @@ async function sendText() {
         const data = await res.json();
         showTyping(false);
         document.getElementById('sendBtn').disabled = false;
-        setStatus('');
 
         if (!res.ok || data.error) {
-            addMessage('leo', 'Something went wrong. Try again or refresh the page.');
+            addMessage('leo', 'Something went wrong. Try again or refresh.');
             return;
         }
         if (data.reply) {
             addMessage('leo', data.reply);
             lastMaxMessage = data.reply;
+            // Auto-play Max's response via TTS
+            playGeminiTTS(data.reply, 'onyx');
         }
         if (data.diamond_events) data.diamond_events.forEach(tx => showXP(tx));
         if (data.diamond_balance !== undefined) updateXP(data.diamond_balance);
@@ -641,7 +642,7 @@ async function sendVoice() {
 }
 
 // ================================================================
-// TTS — Google Cloud Neural2 voices, browser speech fallback
+// TTS — OpenAI tts-1-hd (onyx=Max, nova=prospect)
 // ================================================================
 
 let currentAudio = null;
@@ -659,7 +660,7 @@ function browserSpeak(text) {
 }
 
 async function playGeminiTTS(text, voice) {
-    voice = voice || 'en-GB-Neural2-B';
+    voice = voice || 'onyx';
     if (!text) return null;
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     try {
@@ -709,7 +710,7 @@ async function hearMax() {
     hearBtn.classList.add('playing');
     setStatus('Max is speaking...');
 
-    const audio = await playGeminiTTS(lastMaxMessage, 'en-GB-Neural2-B');
+    const audio = await playGeminiTTS(lastMaxMessage, 'onyx');
     if (audio) {
         const origEnd = audio.onended;
         audio.onended = () => { if(origEnd) origEnd(); hearBtn.classList.remove('playing'); setStatus(''); };
@@ -845,7 +846,7 @@ function addPracticeMsg(role, text) {
 
 async function speakPracticeMsg(text) {
     if (!text) return;
-    await playGeminiTTS(text, 'en-GB-Neural2-A');
+    await playGeminiTTS(text, 'nova');
 }
 
 function setPracticeStatus(text) {
