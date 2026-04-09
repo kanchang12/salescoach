@@ -373,7 +373,7 @@ async function startCall() {
     showTyping(true);
 
     try {
-        const res  = await fetch('/api/practice', {
+        const res  = await fetch('/practice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'prospect', history: [], scenario }),
@@ -411,7 +411,7 @@ async function sendMsg() {
     document.getElementById('sendBtn').disabled = true;
 
     try {
-        const res  = await fetch('/api/practice', {
+        const res  = await fetch('/practice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'prospect', history: callHistory, scenario }),
@@ -442,7 +442,7 @@ async function endCall() {
     document.getElementById('reviewBox').textContent     = 'Max is reviewing your call...';
 
     try {
-        const res  = await fetch('/api/practice', {
+        const res  = await fetch('/practice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'review', history: callHistory, scenario }),
