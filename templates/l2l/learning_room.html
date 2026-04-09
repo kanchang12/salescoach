@@ -388,10 +388,10 @@
 
         <div class="panel-divider"></div>
 
-        <!-- VOICE SESSION: full ElevenLabs Conversational AI agent -->
-        <button class="panel-btn" id="voiceSessionBtn" onclick="openVoiceSession()" title="Live voice session with Max">
-            🎧
-            <span class="btn-label">Voice Call</span>
+        <!-- PRACTICE: Gemini plays the prospect -->
+        <button class="panel-btn" id="practiceBtn" onclick="openPractice()" title="Practice call — Gemini plays the prospect">
+            🎯
+            <span class="btn-label">Practice</span>
         </button>
 
     </div>
@@ -438,31 +438,67 @@
 </div><!-- end main-layout -->
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- VOICE SESSION OVERLAY — ElevenLabs Direct API                 -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="voice-overlay" id="voiceOverlay">
-    <div class="voice-overlay-card">
-        <div class="voice-avatar" id="voiceAvatar">🎙️</div>
-        <h2>Live Voice Session with Max</h2>
-        <p id="voiceStatus">Connecting to Max...</p>
-        <div id="voiceOrb" style="width:80px;height:80px;border-radius:50%;background:#1a3a2a;border:2px solid #4caf50;margin:16px auto;display:flex;align-items:center;justify-content:center;font-size:2rem;transition:all 0.2s;">🎙️</div>
-        <div style="font-size:0.8rem;color:var(--dim);margin-bottom:20px;" id="voiceTranscript"></div>
-        <button class="voice-close-btn" onclick="closeVoiceSession()">End Session</button>
+<!-- PRACTICE CALL OVERLAY — Gemini plays the prospect -->
+<div class="voice-overlay" id="practiceOverlay">
+    <div class="voice-overlay-card" style="max-width:560px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+            <div>
+                <h2 style="margin:0 0 4px;">Practice Call</h2>
+                <p style="font-size:0.82rem;color:var(--dim);margin:0;" id="practiceScenarioLabel">Gemini is playing your prospect</p>
+            </div>
+            <button class="voice-close-btn" onclick="endPractice()" style="flex-shrink:0;">End & Review</button>
+        </div>
+
+        <!-- Scenario picker — shown before call starts -->
+        <div id="practiceSetup">
+            <div style="margin-bottom:12px;">
+                <label style="font-size:0.82rem;color:var(--dim);display:block;margin-bottom:6px;">Choose a scenario</label>
+                <select id="practiceScenario" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:0.9rem;font-family:inherit;">
+                    <option value="cold call to a skeptical prospect who has never heard of you">Cold call — complete stranger</option>
+                    <option value="follow-up call after sending a proposal that the prospect has not responded to">Follow-up — no response to proposal</option>
+                    <option value="discovery call with a prospect who is also evaluating your competitor">Discovery — prospect evaluating competitors</option>
+                    <option value="negotiation call where the prospect is pushing for a 30% discount">Negotiation — prospect wants 30% off</option>
+                    <option value="closing call with a prospect who keeps saying they need more time">Closing — prospect keeps stalling</option>
+                    <option value="objection handling call where the prospect says they are happy with their current supplier">Objection — happy with current supplier</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="startPractice()" style="width:100%;padding:12px;">Start Practice Call</button>
+        </div>
+
+        <!-- Call in progress -->
+        <div id="practiceCall" style="display:none;">
+            <div class="chat-area" id="practiceChat" style="max-height:280px;min-height:160px;overflow-y:auto;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;gap:10px;">
+                <!-- practice messages go here -->
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;">
+                <textarea id="practiceInput" class="text-input" placeholder="Your response..." rows="2"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPracticeMsg()}"
+                    style="min-height:44px;max-height:90px;"></textarea>
+                <button class="send-btn" onclick="sendPracticeMsg()" style="flex-shrink:0;">↑</button>
+                <button class="panel-btn" id="practiceTalkBtn" onclick="togglePracticeTalk()"
+                    style="width:44px;height:44px;font-size:1.2rem;flex-shrink:0;" title="Speak your response">🎙️</button>
+            </div>
+            <div style="font-size:0.75rem;color:var(--dim);margin-top:6px;text-align:center;" id="practiceStatus"></div>
+        </div>
+
+        <!-- Review -->
+        <div id="practiceReview" style="display:none;">
+            <div style="font-size:0.82rem;color:var(--dim);margin-bottom:8px;">Max's coaching debrief</div>
+            <div id="practiceReviewText" style="font-size:0.9rem;color:var(--text);line-height:1.7;white-space:pre-wrap;"></div>
+            <button class="btn btn-primary" onclick="closePractice()" style="width:100%;margin-top:16px;padding:10px;">Done</button>
+        </div>
     </div>
 </div>
 
 <script>
 const LEARNER_NAME = {{ child.first_name | tojson }};
 const SESSION_ID   = {{ learning_session.session_id | tojson }};
-const EL_AGENT_ID  = {{ elevenlabs_agent_id | tojson }};  // set in app.py context
 
 let isRecording    = false;
 let mediaRecorder  = null;
 let audioChunks    = [];
 let heartbeatInterval = null;
 let lastMaxMessage = document.querySelector('.msg-leo')?.innerText?.replace('MAX', '').trim() || '';
-let ttsAudio       = null;
-let voiceSessionOpen = false;
 
 // ================================================================
 // TEXT CHAT
@@ -605,55 +641,62 @@ async function sendVoice() {
 }
 
 // ================================================================
-// HEAR MAX — ElevenLabs TTS (reads last Max message aloud)
+// GEMINI TTS — plays audio from /api/tts
+// voice: 'Charon' (Max), 'Puck' (prospect)
+// Available voices: Aoede, Charon, Fenrir, Kore, Puck
+// ================================================================
+
+let currentAudio = null;
+
+async function playGeminiTTS(text, voice) {
+    voice = voice || 'Charon';
+    if (!text) return;
+    // Stop any current audio
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    try {
+        const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, voice }),
+        });
+        if (!res.ok) throw new Error('TTS failed');
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        currentAudio = new Audio(url);
+        currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; };
+        currentAudio.play();
+        return currentAudio;
+    } catch(e) {
+        console.warn('TTS error:', e);
+        return null;
+    }
+}
+
+// ================================================================
+// HEAR MAX — Gemini TTS with Charon voice
 // ================================================================
 
 async function hearMax() {
     if (!lastMaxMessage) return;
-
     const hearBtn = document.getElementById('hearBtn');
 
-    // If already playing, stop it
-    if (ttsAudio && !ttsAudio.paused) {
-        ttsAudio.pause();
-        ttsAudio.currentTime = 0;
-        ttsAudio = null;
+    if (currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio = null;
         hearBtn.classList.remove('playing');
         setStatus('');
         return;
     }
 
     hearBtn.classList.add('playing');
-    setStatus('Max is speaking... press 🔊 to stop');
-
-    try {
-        const res = await fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: lastMaxMessage }),
-        });
-
-        if (!res.ok) throw new Error('TTS failed');
-
-        const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        ttsAudio   = new Audio(url);
-
-        ttsAudio.onended = () => {
-            hearBtn.classList.remove('playing');
-            setStatus('');
-            URL.revokeObjectURL(url);
-        };
-        ttsAudio.onerror = () => {
-            hearBtn.classList.remove('playing');
-            setStatus('Could not play audio.');
-        };
-
-        ttsAudio.play();
-
-    } catch (err) {
+    setStatus('Max is speaking...');
+    const audio = await playGeminiTTS(lastMaxMessage, 'Charon');
+    if (audio) {
+        audio.onended = () => { hearBtn.classList.remove('playing'); setStatus(''); };
+        audio.onerror = () => { hearBtn.classList.remove('playing'); setStatus(''); };
+    } else {
         hearBtn.classList.remove('playing');
-        setStatus('Audio unavailable — check ElevenLabs API key.');
+        setStatus('');
     }
 }
 
@@ -662,194 +705,175 @@ async function hearMax() {
 // ================================================================
 
 // ================================================================
-// VOICE SESSION — ElevenLabs Conversational AI Direct API
-// Uses WebSocket — no widget, no floating bubble
+// PRACTICE CALL — Gemini plays the prospect
 // ================================================================
 
-let elSocket       = null;
-let elAudioCtx     = null;
-let elMicStream    = null;
-let elMicProcessor = null;
-let elAudioQueue   = [];
-let elPlaying      = false;
+let practiceHistory  = [];
+let practiceScenario = '';
+let practiceRecorder = null;
+let practiceRecording = false;
 
-function setVoiceStatus(msg) {
-    const el = document.getElementById('voiceStatus');
-    if (el) el.textContent = msg;
+function openPractice() {
+    document.getElementById('practiceOverlay').classList.add('active');
+    document.getElementById('practiceSetup').style.display = 'block';
+    document.getElementById('practiceCall').style.display  = 'none';
+    document.getElementById('practiceReview').style.display = 'none';
 }
 
-function setVoiceOrb(state) {
-    const orb = document.getElementById('voiceOrb');
-    if (!orb) return;
-    if (state === 'listening') {
-        orb.style.borderColor = '#4caf50';
-        orb.style.background  = '#1a3a2a';
-        orb.style.boxShadow   = '0 0 16px rgba(76,175,80,0.5)';
-        orb.textContent = '🎙️';
-    } else if (state === 'speaking') {
-        orb.style.borderColor = '#2196f3';
-        orb.style.background  = '#1a2a3a';
-        orb.style.boxShadow   = '0 0 16px rgba(33,150,243,0.5)';
-        orb.textContent = '🔊';
-    } else {
-        orb.style.borderColor = '#555';
-        orb.style.background  = '#222';
-        orb.style.boxShadow   = 'none';
-        orb.textContent = '⏳';
-    }
+function closePractice() {
+    document.getElementById('practiceOverlay').classList.remove('active');
+    practiceHistory  = [];
+    practiceScenario = '';
+    document.getElementById('practiceChat').innerHTML = '';
+    document.getElementById('practiceReviewText').textContent = '';
 }
 
-async function openVoiceSession() {
-    if (!EL_AGENT_ID) {
-        setStatus('Set ELEVENLABS_AGENT_ID in your Cloud Run environment variables.');
-        return;
-    }
+async function startPractice() {
+    const sel = document.getElementById('practiceScenario');
+    practiceScenario = sel.value;
+    practiceHistory  = [];
 
-    voiceSessionOpen = true;
-    document.getElementById('voiceOverlay').classList.add('active');
-    document.getElementById('voiceSessionBtn').classList.add('voice-active');
-    setVoiceStatus('Connecting to Max...');
-    setVoiceOrb('idle');
+    document.getElementById('practiceScenarioLabel').textContent = sel.options[sel.selectedIndex].text;
+    document.getElementById('practiceSetup').style.display = 'none';
+    document.getElementById('practiceCall').style.display  = 'block';
 
+    // Gemini opens the call as the prospect
+    setPracticeStatus('Prospect is answering...');
     try {
-        // Step 1: Get signed URL from our backend
-        const res = await fetch('/api/el-signed-url', { method: 'POST' });
+        const res  = await fetch('/api/practice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'prospect', history: [], scenario: practiceScenario }),
+        });
         const data = await res.json();
-        if (!res.ok || !data.signed_url) {
-            setVoiceStatus('Could not connect. Check ElevenLabs API key.');
-            return;
-        }
-
-        // Step 2: Open WebSocket to ElevenLabs
-        elSocket = new WebSocket(data.signed_url);
-        elSocket.binaryType = 'arraybuffer';
-
-        elSocket.onopen = async () => {
-            setVoiceStatus('Max is ready. Speak now.');
-            setVoiceOrb('listening');
-            await startMic();
-        };
-
-        elSocket.onmessage = async (event) => {
-            if (typeof event.data === 'string') {
-                try {
-                    const msg = JSON.parse(event.data);
-                    if (msg.type === 'agent_response' && msg.agent_response_event?.agent_response) {
-                        const text = msg.agent_response_event.agent_response;
-                        document.getElementById('voiceTranscript').textContent = 'Max: ' + text;
-                        addMessage('leo', text);
-                        lastMaxMessage = text;
-                    }
-                    if (msg.type === 'user_transcript' && msg.user_transcription_event?.user_transcript) {
-                        document.getElementById('voiceTranscript').textContent = 'You: ' + msg.user_transcription_event.user_transcript;
-                    }
-                } catch(e) {}
-            } else {
-                // Binary audio from ElevenLabs — play it
-                setVoiceOrb('speaking');
-                elAudioQueue.push(event.data);
-                if (!elPlaying) playNextAudio();
-            }
-        };
-
-        elSocket.onerror = () => {
-            setVoiceStatus('Connection error. Try again.');
-            setVoiceOrb('idle');
-        };
-
-        elSocket.onclose = () => {
-            setVoiceStatus('Session ended.');
-            setVoiceOrb('idle');
-            stopMic();
-        };
-
-    } catch(err) {
-        setVoiceStatus('Failed to connect: ' + err.message);
-    }
-}
-
-async function startMic() {
-    try {
-        elAudioCtx  = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-        elMicStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 }, video: false });
-
-        // AudioWorklet processor inline as a Blob — no separate file needed
-        const workletCode = `
-            class PCMProcessor extends AudioWorkletProcessor {
-                process(inputs) {
-                    const input = inputs[0];
-                    if (input && input[0]) {
-                        this.port.postMessage(input[0]);
-                    }
-                    return true;
-                }
-            }
-            registerProcessor('pcm-processor', PCMProcessor);
-        `;
-        const blob = new Blob([workletCode], { type: 'application/javascript' });
-        const url  = URL.createObjectURL(blob);
-        await elAudioCtx.audioWorklet.addModule(url);
-        URL.revokeObjectURL(url);
-
-        const source    = elAudioCtx.createMediaStreamSource(elMicStream);
-        elMicProcessor  = new AudioWorkletNode(elAudioCtx, 'pcm-processor');
-
-        elMicProcessor.port.onmessage = (e) => {
-            if (!elSocket || elSocket.readyState !== WebSocket.OPEN) return;
-            const float32 = e.data;
-            const int16   = new Int16Array(float32.length);
-            for (let i = 0; i < float32.length; i++) {
-                int16[i] = Math.max(-32768, Math.min(32767, float32[i] * 32768));
-            }
-            const bytes = new Uint8Array(int16.buffer);
-            let binary  = '';
-            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-            elSocket.send(JSON.stringify({ user_audio_chunk: btoa(binary) }));
-        };
-
-        source.connect(elMicProcessor);
-        elMicProcessor.connect(elAudioCtx.destination);
-
-    } catch(err) {
-        setVoiceStatus('Microphone error: ' + err.message);
-    }
-}
-
-function stopMic() {
-    if (elMicProcessor) {
-        elMicProcessor.port.onmessage = null;
-        elMicProcessor.disconnect();
-        elMicProcessor = null;
-    }
-    if (elMicStream)    { elMicStream.getTracks().forEach(t => t.stop()); elMicStream = null; }
-    if (elAudioCtx)     { elAudioCtx.close(); elAudioCtx = null; }
-}
-
-async function playNextAudio() {
-    if (!elAudioQueue.length) { elPlaying = false; setVoiceOrb('listening'); return; }
-    elPlaying = true;
-    const raw = elAudioQueue.shift();
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const buf = await ctx.decodeAudioData(raw.slice(0));
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.onended = () => { ctx.close(); playNextAudio(); };
-        src.start();
+        const reply = data.reply || 'Hello?';
+        practiceHistory.push({ role: 'prospect', text: reply });
+        addPracticeMsg('prospect', reply);
+        speakPracticeMsg(reply);
+        setPracticeStatus('Your turn — type or press 🎙️');
     } catch(e) {
-        playNextAudio();
+        setPracticeStatus('Could not connect. Try again.');
     }
 }
 
-function closeVoiceSession() {
-    voiceSessionOpen = false;
-    document.getElementById('voiceOverlay').classList.remove('active');
-    document.getElementById('voiceSessionBtn').classList.remove('voice-active');
-    stopMic();
-    if (elSocket) { elSocket.close(); elSocket = null; }
-    elAudioQueue = [];
-    elPlaying    = false;
+async function sendPracticeMsg() {
+    const input = document.getElementById('practiceInput');
+    const msg   = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+
+    practiceHistory.push({ role: 'rep', text: msg });
+    addPracticeMsg('rep', msg);
+    setPracticeStatus('Prospect is thinking...');
+
+    try {
+        const res  = await fetch('/api/practice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'prospect', history: practiceHistory, scenario: practiceScenario }),
+        });
+        const data = await res.json();
+        const reply = data.reply || 'I see.';
+        practiceHistory.push({ role: 'prospect', text: reply });
+        addPracticeMsg('prospect', reply);
+        speakPracticeMsg(reply);
+        setPracticeStatus('Your turn');
+    } catch(e) {
+        setPracticeStatus('Error. Try again.');
+    }
+}
+
+async function endPractice() {
+    if (speechSynth.speaking) speechSynth.cancel();
+    if (practiceHistory.length < 2) { closePractice(); return; }
+
+    document.getElementById('practiceCall').style.display   = 'none';
+    document.getElementById('practiceReview').style.display = 'block';
+    document.getElementById('practiceReviewText').textContent = 'Max is reviewing your call...';
+
+    try {
+        const res  = await fetch('/api/practice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'review', history: practiceHistory, scenario: practiceScenario }),
+        });
+        const data = await res.json();
+        document.getElementById('practiceReviewText').textContent = data.reply || 'Good effort.';
+    } catch(e) {
+        document.getElementById('practiceReviewText').textContent = 'Could not load review. Try again.';
+    }
+}
+
+function addPracticeMsg(role, text) {
+    const area = document.getElementById('practiceChat');
+    const div  = document.createElement('div');
+    div.className = 'msg ' + (role === 'rep' ? 'msg-child' : 'msg-leo');
+    if (role === 'prospect') {
+        div.innerHTML = '<div class="msg-name" style="font-size:0.65rem;letter-spacing:1px;margin-bottom:4px;">PROSPECT</div>' + escHtml(text);
+    } else {
+        div.textContent = text;
+    }
+    div.style.maxWidth = '85%';
+    div.style.fontSize = '0.95rem';
+    area.appendChild(div);
+    area.scrollTop = area.scrollHeight;
+}
+
+function speakPracticeMsg(text) {
+    if (!text) return;
+    playGeminiTTS(text, 'Puck');  // Puck = prospect voice
+}
+
+function setPracticeStatus(text) {
+    const el = document.getElementById('practiceStatus');
+    if (el) el.textContent = text;
+}
+
+// Voice input for practice
+async function togglePracticeTalk() {
+    const btn = document.getElementById('practiceTalkBtn');
+    if (!practiceRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            let chunks = [];
+            practiceRecorder = new MediaRecorder(stream);
+            practiceRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+            practiceRecorder.onstop = async () => {
+                stream.getTracks().forEach(t => t.stop());
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64 = reader.result.split(',')[1];
+                    setPracticeStatus('Transcribing...');
+                    try {
+                        const res  = await fetch('/voice-text', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ audio: base64, practice_mode: true }),
+                        });
+                        const data = await res.json();
+                        if (data.transcript) {
+                            document.getElementById('practiceInput').value = data.transcript;
+                            sendPracticeMsg();
+                        }
+                    } catch(e) { setPracticeStatus('Could not transcribe. Type instead.'); }
+                };
+                reader.readAsDataURL(blob);
+            };
+            practiceRecorder.start();
+            practiceRecording = true;
+            btn.classList.add('recording');
+            btn.innerHTML = '⏹️';
+            setPracticeStatus('Listening... press again to stop');
+        } catch(e) {
+            setPracticeStatus('Microphone unavailable. Type instead.');
+        }
+    } else {
+        practiceRecorder.stop();
+        practiceRecording = false;
+        btn.classList.remove('recording');
+        btn.innerHTML = '🎙️';
+    }
 }
 
 // ================================================================
@@ -963,8 +987,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('beforeunload', () => {
     if (heartbeatInterval) clearInterval(heartbeatInterval);
-    if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
-    if (voiceSessionOpen) closeVoiceSession();
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
 });
 </script>
 

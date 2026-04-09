@@ -33,9 +33,6 @@ init_db(app)
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
 
-ELEVENLABS_API_KEY  = os.environ.get('ELEVENLABS_API_KEY', '')
-ELEVENLABS_VOICE_ID = os.environ.get('ELEVENLABS_VOICE_ID', 'pNInz6obpgDQGcFmaJgB')
-ELEVENLABS_AGENT_ID = os.environ.get('ELEVENLABS_AGENT_ID', '')
 
 gemini_client = None
 LLM_BACKEND = None
@@ -515,8 +512,7 @@ def l2l_room():
                            child=child,
                            learning_session=ls,
                            chat_history=ls.chat_log or [],
-                           diamond_balance=child.diamond_balance,
-                           elevenlabs_agent_id=ELEVENLABS_AGENT_ID)
+                           diamond_balance=child.diamond_balance)
 
 
 # ================================================================
@@ -1409,56 +1405,129 @@ def delete_account():
     session.clear()
     return render_template('l2l/deletion_confirmed.html')
 
-# ── ELEVENLABS API ROUTES ────────────────────────────────────────
+# ── GEMINI TTS ────────────────────────────────────────────────────
 
 @app.route('/api/tts', methods=['POST'])
 def api_tts():
-    """ElevenLabs TTS — reads Max's last message aloud."""
-    import requests as req_lib
-    data = request.get_json() or {}
-    text = data.get('text', '').strip()[:500]
+    """Gemini TTS — returns WAV audio for any text."""
+    data  = request.get_json() or {}
+    text  = data.get('text', '').strip()[:500]
+    voice = data.get('voice', 'Charon')  # Charon=Max, Puck=prospect
     if not text:
         return jsonify({'error': 'No text'}), 400
-    if not ELEVENLABS_API_KEY:
-        return jsonify({'error': 'ElevenLabs API key not set'}), 503
+    if not gemini_client:
+        return jsonify({'error': 'Gemini not configured'}), 503
     try:
-        r = req_lib.post(
-            f'https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}',
-            headers={'xi-api-key': ELEVENLABS_API_KEY, 'Content-Type': 'application/json'},
-            json={'text': text, 'model_id': 'eleven_turbo_v2_5',
-                  'voice_settings': {'stability': 0.55, 'similarity_boost': 0.75}},
-            timeout=15,
+        from google.genai import types
+        import base64
+        response = gemini_client.models.generate_content(
+            model='gemini-2.5-flash-preview-tts',
+            contents=text,
+            config=types.GenerateContentConfig(
+                response_modalities=['AUDIO'],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=voice
+                        )
+                    )
+                )
+            )
         )
-        if r.status_code != 200:
-            return jsonify({'error': 'TTS error'}), 502
+        audio_data = response.candidates[0].content.parts[0].inline_data.data
+        audio_bytes = base64.b64decode(audio_data)
         from flask import Response
-        return Response(r.content, status=200, mimetype='audio/mpeg',
+        return Response(audio_bytes, status=200, mimetype='audio/wav',
                         headers={'Cache-Control': 'no-cache'})
     except Exception as e:
+        print(f'[TTS] {e}')
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/el-signed-url', methods=['POST'])
-def api_el_signed_url():
-    """Get a signed WebSocket URL from ElevenLabs for direct Conversational AI."""
-    import requests as req_lib
-    if not ELEVENLABS_API_KEY or not ELEVENLABS_AGENT_ID:
-        return jsonify({'error': 'ElevenLabs not configured'}), 503
-    try:
-        r = req_lib.get(
-            f'https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id={ELEVENLABS_AGENT_ID}',
-            headers={'xi-api-key': ELEVENLABS_API_KEY},
-            timeout=10,
+# ── PRACTICE CALL — Gemini plays the prospect ────────────────────
+
+@app.route('/api/practice', methods=['POST'])
+@child_required
+def api_practice():
+    child    = Child.query.get(session['child_id'])
+    data     = request.get_json() or {}
+    mode     = data.get('mode', 'prospect')
+    history  = data.get('history', [])
+    scenario = data.get('scenario', '')
+    industry = (child.interests or {}).get('primary', 'general')
+    level    = child.year_group or 'junior'
+
+    if mode == 'review':
+        transcript = '\n'.join(
+            f"{'Rep' if m['role'] == 'rep' else 'Prospect'}: {m['text']}"
+            for m in history
         )
-        if r.status_code != 200:
-            return jsonify({'error': f'ElevenLabs error: {r.status_code}'}), 502
-        data = r.json()
-        return jsonify({'signed_url': data.get('signed_url', '')})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        system = (
+            f"You are Max, a blunt sales coach debriefing a practice call.\n"
+            f"Rep level: {level}. Sector: {industry.replace('_',' ')}. Scenario: {scenario}\n\n"
+            f"Write EXACTLY this structure, no extra words:\n"
+            f"WHAT WORKED: [one sentence — specific, not vague]\n"
+            f"BIGGEST MISS: [one sentence — the single thing that would have lost the deal]\n"
+            f"THE FIX: [one concrete technique with an example phrase they could have used]\n"
+            f"SCORE: [X/10 — one sentence why]\n\n"
+            f"Max 120 words. No intro. Start with WHAT WORKED:"
+        )
+        reply = call_ai(system, transcript, max_tokens=200, temperature=0.3)
+        return jsonify({'reply': reply or 'Good effort. Let us debrief what happened.'})
+
+    # Gemini plays the prospect
+    personas = {
+        'tech_saas':          'a skeptical VP of Engineering at a 150-person SaaS company',
+        'pharma':             'a busy GP with 8 minutes between patients',
+        'financial_services': 'a cautious self-employed accountant who already has a financial adviser',
+        'construction':       'a hard-nosed commercial director reviewing three competing bids',
+        'recruitment':        'a hiring manager who has been burned by agencies before',
+        'general':            'a realistic B2B decision maker who is politely skeptical',
+    }
+    persona = personas.get(industry, personas['general'])
+
+    last_rep = history[-1]['text'] if history else ''
+    prior = '\n'.join(
+        f"{'Salesperson' if m['role'] == 'rep' else 'Prospect'}: {m['text']}"
+        for m in history[:-1]
+    ) if len(history) > 1 else 'This is the start of the call.'
+
+    system = (
+        f"You are {persona}. A salesperson has called you.\n"
+        f"Scenario: {scenario}\n\n"
+        f"STRICT RULES — no exceptions:\n"
+        f"- Output ONLY your spoken words. NO stage directions, NO actions in brackets, NO (pauses), NO (chuckles).\n"
+        f"- Real speech only. Exactly as you would say it on a phone call.\n"
+        f"- Under 30 words per response.\n"
+        f"- Be realistic: sometimes skeptical, sometimes curious, never instantly sold.\n"
+        f"- Raise objections naturally when appropriate: timing, budget, existing solution.\n"
+        f"- If the rep makes a strong point, acknowledge it briefly and probe further.\n"
+        f"- NEVER give hints, never break character, never say anything a real prospect would not say.\n\n"
+        f"Conversation so far:\n{prior}"
+    )
+
+    reply = call_ai(system, f"Salesperson: {last_rep}", max_tokens=60, temperature=0.8)
+
+    # Strip any stage directions Gemini adds anyway
+    import re
+    if reply:
+        reply = re.sub(r'\([^)]*\)', '', reply).strip()
+        reply = re.sub(r'\*[^*]*\*', '', reply).strip()
+        reply = reply.strip('"').strip()
+
+    return jsonify({'reply': reply or "Right, what have you got for me?"})
+
 
 
 # ── LANDING + SHORT REDIRECTS ────────────────────────────────────
 @app.route('/', methods=['GET','POST'])
 def index():
     return render_template('l2l/landing.html')
+
+@app.route('/pricing')
+def pricing():
+    return render_template('l2l/pricing.html')
+
+@app.route('/privacy')
+def privacy():
+    return render_template('l2l/privacy.html')

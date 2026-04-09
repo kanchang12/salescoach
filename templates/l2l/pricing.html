@@ -1,258 +1,109 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pricing — TrueSkills Sales Coach</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+{% extends "base.html" %}
+{% block title %}Pricing — TrueSkills Sales Coach{% endblock %}
+{% block body %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #2c2825;
-            color: #e8e0d8;
-            min-height: 100vh;
-        }
-
-        header {
-            padding: 24px 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #3d3630;
-        }
-
-        .logo { font-size: 1.4rem; font-weight: 700; color: #e8e0d8; letter-spacing: -0.5px; }
-        .logo span { color: #b5a99a; }
-
-        nav a { color: #b5a99a; text-decoration: none; margin-left: 24px; font-size: 0.9rem; }
-        nav a:hover { color: #e8e0d8; }
-
-        .hero { text-align: center; padding: 64px 24px 48px; }
-        .hero h1 { font-size: 2.2rem; font-weight: 700; color: #e8e0d8; margin-bottom: 16px; line-height: 1.2; }
-        .hero p { font-size: 1.1rem; color: #b5a99a; max-width: 520px; margin: 0 auto; line-height: 1.6; }
-
-        .plans {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 24px 80px;
-        }
-
-        @media (max-width: 600px) {
-            .plans { grid-template-columns: 1fr; }
-            .hero h1 { font-size: 1.7rem; }
-        }
-
-        .plan {
-            background: #332f2c;
-            border: 2px solid #4a4440;
-            border-radius: 16px;
-            padding: 32px 28px;
-            position: relative;
-        }
-
-        .plan.recommended { border-color: #8a7a6a; }
-
-        .plan-badge {
-            position: absolute;
-            top: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #6b5d50;
-            color: #e8e0d8;
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 4px 14px;
-            border-radius: 20px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-
-        .plan-name { font-size: 1.1rem; font-weight: 700; color: #e8e0d8; margin-bottom: 4px; }
-        .plan-tagline { font-size: 0.85rem; color: #8a7a6a; margin-bottom: 24px; }
-
-        .plan-price {
-            font-size: 2.8rem;
-            font-weight: 800;
-            color: #e8e0d8;
-            line-height: 1;
-            margin-bottom: 4px;
-        }
-
-        .plan-price .currency { font-size: 1.4rem; vertical-align: top; padding-top: 8px; display: inline-block; }
-        .plan-price .period { font-size: 0.9rem; color: #8a7a6a; font-weight: 400; }
-
-        .plan-divider { border: none; border-top: 1px solid #4a4440; margin: 24px 0; }
-
-        .plan-features { list-style: none; margin-bottom: 28px; }
-
-        .plan-features li {
-            font-size: 0.9rem;
-            color: #c8bfb5;
-            padding: 6px 0;
-            padding-left: 22px;
-            position: relative;
-            line-height: 1.4;
-        }
-
-        .plan-features li::before { content: '✓'; position: absolute; left: 0; color: #8a7a6a; font-weight: 600; }
-
-        .plan-features li.same { color: #9a8f85; font-style: italic; }
-        .plan-features li.same::before { content: '='; color: #6a5f55; }
-
-        .cta-btn {
-            display: block;
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            text-align: center;
-            text-decoration: none;
-            cursor: pointer;
-            border: none;
-            transition: opacity 0.15s;
-        }
-
-        .cta-btn:hover { opacity: 0.85; }
-        .cta-primary { background: #7a6a5a; color: #f0e8e0; }
-        .cta-secondary { background: transparent; color: #b5a99a; border: 1.5px solid #5a5048; }
-
-        .trial-note { text-align: center; padding: 0 24px 48px; color: #8a7a6a; font-size: 0.85rem; }
-
-        .faq { max-width: 640px; margin: 0 auto; padding: 0 24px 80px; }
-        .faq h2 { font-size: 1.2rem; color: #e8e0d8; margin-bottom: 24px; }
-
-        .faq-item { border-bottom: 1px solid #3d3630; padding: 20px 0; }
-        .faq-item:last-child { border-bottom: none; }
-
-        .faq-q { font-size: 0.95rem; color: #d0c8be; font-weight: 600; margin-bottom: 8px; }
-        .faq-a { font-size: 0.88rem; color: #8a7a6a; line-height: 1.6; }
-    </style>
-</head>
-<body>
-
-<header>
-    <div class="logo">trueskills <span style="font-size:0.75rem;margin-left:4px;">sales coach</span></div>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/login">Log in</a>
-        <a href="/register">Start free trial</a>
-    </nav>
-</header>
-
-<div class="hero">
-    <h1>Straightforward pricing.<br>No hidden tiers.</h1>
-    <p>7-day free trial. No card required. Cancel anytime.</p>
-</div>
-
-<div class="plans">
-
-    <!-- Pro -->
-    <div class="plan recommended">
-        <div class="plan-badge">Most popular</div>
-        <div class="plan-name">Pro</div>
-        <div class="plan-tagline">Daily manager access</div>
-        <div class="plan-price">
-            <span class="currency">£</span>29<span class="period">/month</span>
-        </div>
-        <hr class="plan-divider">
-        <ul class="plan-features">
-            <li class="same">Same Max coach as Essentials</li>
-            <li class="same">Same 8 skill tracks</li>
-            <li class="same">Same voice coaching</li>
-            <li class="same">Same XP and streaks</li>
-            <li>Manager dashboard available <strong>every day</strong></li>
-            <li>See daily session logs and skill progress</li>
-            <li>Set weekly XP targets with rewards</li>
-            <li>Team view — track multiple learners</li>
-        </ul>
-        <a href="/register" class="cta-btn cta-primary">Start free trial</a>
+<nav class="topbar">
+    <a href="/" class="logo"><span style="color:var(--text)">true</span><span style="color:var(--dim)">skills</span><span style="color:var(--dim);font-size:0.75rem;margin-left:8px;">sales coach</span></a>
+    <div style="display:flex;align-items:center;gap:20px;">
+        <a href="/login" style="font-size:0.9rem;">Log in</a>
+        <a href="/register" class="btn btn-primary" style="padding:10px 20px;font-size:0.9rem;">Start free</a>
     </div>
+</nav>
 
-    <!-- Essentials -->
-    <div class="plan">
-        <div class="plan-name">Essentials</div>
-        <div class="plan-tagline">Self-directed learner</div>
-        <div class="plan-price">
-            <span class="currency">£</span>12<span class="period">/month</span>
+<section style="text-align:center;padding:64px 24px 48px;max-width:680px;margin:0 auto;">
+    <h1 style="font-size:2.2rem;font-weight:800;margin-bottom:12px;line-height:1.2;">Pay per rep. Not per seat.</h1>
+    <p style="font-size:1rem;color:var(--muted);line-height:1.6;margin-bottom:8px;">Price scales with your team. Every rep gets the same Max.</p>
+    <p style="font-size:0.85rem;color:var(--dim);">7-day free trial · No card required · Cancel anytime</p>
+</section>
+
+<section style="padding:0 24px 80px;max-width:900px;margin:0 auto;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+
+        <div class="card" style="padding:32px 24px;">
+            <div style="font-size:0.78rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Starter</div>
+            <div style="font-size:0.88rem;color:var(--muted);margin-bottom:20px;">Individual reps and small teams up to 5.</div>
+            <div style="margin-bottom:4px;"><span style="font-size:2.8rem;font-weight:800;color:var(--text);">£9</span><span style="font-size:0.9rem;color:var(--dim);"> / rep / month</span></div>
+            <div style="font-size:0.78rem;color:var(--dim);margin-bottom:24px;">Up to 5 reps</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:28px;font-size:0.88rem;">
+                <div style="color:var(--muted);">✓ All 8 skill tracks</div>
+                <div style="color:var(--muted);">✓ Practice call (Gemini as prospect)</div>
+                <div style="color:var(--muted);">✓ Voice coaching</div>
+                <div style="color:var(--muted);">✓ XP tracking and session history</div>
+                <div style="color:var(--dim);">✗ Manager dashboard</div>
+                <div style="color:var(--dim);">✗ Team reporting</div>
+            </div>
+            <a href="/register" class="btn btn-ghost" style="display:block;text-align:center;padding:12px;">Start free trial</a>
         </div>
-        <hr class="plan-divider">
-        <ul class="plan-features">
-            <li class="same">Same Max coach as Pro</li>
-            <li class="same">Same 8 skill tracks</li>
-            <li class="same">Same voice coaching</li>
-            <li class="same">Same XP and streaks</li>
-            <li>Personal dashboard available <strong>every Sunday</strong></li>
-            <li>Weekly progress summary</li>
-        </ul>
-        <a href="/register" class="cta-btn cta-secondary">Start free trial</a>
+
+        <div class="card" style="padding:32px 24px;border-color:var(--accent);position:relative;">
+            <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:0.72rem;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap;">Most popular</div>
+            <div style="font-size:0.78rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Team</div>
+            <div style="font-size:0.88rem;color:var(--muted);margin-bottom:20px;">Sales teams of 6 to 50 reps with a manager.</div>
+            <div style="margin-bottom:4px;"><span style="font-size:2.8rem;font-weight:800;color:var(--text);">£7</span><span style="font-size:0.9rem;color:var(--dim);"> / rep / month</span></div>
+            <div style="font-size:0.78rem;color:var(--dim);margin-bottom:24px;">6–50 reps</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:28px;font-size:0.88rem;">
+                <div style="color:var(--muted);">✓ Everything in Starter</div>
+                <div style="color:var(--muted);">✓ Manager dashboard — daily access</div>
+                <div style="color:var(--muted);">✓ Team progress reporting</div>
+                <div style="color:var(--muted);">✓ Set weekly XP targets per rep</div>
+                <div style="color:var(--muted);">✓ Sector-specific scenario library</div>
+                <div style="color:var(--dim);">✗ Custom scenarios</div>
+            </div>
+            <a href="/register" class="btn btn-primary" style="display:block;text-align:center;padding:12px;">Start free trial</a>
+        </div>
+
+        <div class="card" style="padding:32px 24px;">
+            <div style="font-size:0.78rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Enterprise</div>
+            <div style="font-size:0.88rem;color:var(--muted);margin-bottom:20px;">Large sales organisations with custom needs.</div>
+            <div style="margin-bottom:4px;"><span style="font-size:2rem;font-weight:800;color:var(--text);">Custom</span></div>
+            <div style="font-size:0.78rem;color:var(--dim);margin-bottom:24px;">50+ reps · annual billing available</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:28px;font-size:0.88rem;">
+                <div style="color:var(--muted);">✓ Everything in Team</div>
+                <div style="color:var(--muted);">✓ Custom scenario uploads</div>
+                <div style="color:var(--muted);">✓ White-label option</div>
+                <div style="color:var(--muted);">✓ SSO / SAML integration</div>
+                <div style="color:var(--muted);">✓ Dedicated onboarding</div>
+                <div style="color:var(--muted);">✓ SLA and invoice billing</div>
+            </div>
+            <a href="mailto:hello@trueskills.uk" class="btn btn-ghost" style="display:block;text-align:center;padding:12px;">Contact us</a>
+        </div>
+
     </div>
+    <div style="text-align:center;margin-top:28px;font-size:0.85rem;color:var(--dim);">
+        Team example: 10 reps × £7 = <strong style="color:var(--muted);">£70/month</strong>. Compare that to one day of external training.
+    </div>
+</section>
 
-</div>
-
-<div class="trial-note">
-    7-day free trial · No credit card required · Cancel any time · No questions asked
-</div>
-
-<div class="faq">
-    <h2>Questions</h2>
-
-    <div class="faq-item">
-        <div class="faq-q">What is the difference between Pro and Essentials?</div>
-        <div class="faq-a">
-            Only the dashboard access frequency. Pro managers can check in daily and track multiple learners.
-            Essentials is for individual self-directed learners who want a weekly summary.
-            The coaching session itself is identical on both plans.
+<section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:60px 24px;">
+    <div style="max-width:640px;margin:0 auto;">
+        <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:24px;text-align:center;">Questions</h2>
+        <div style="border-bottom:1px solid var(--border);padding:16px 0;">
+            <div style="font-size:0.9rem;color:var(--text);font-weight:600;margin-bottom:4px;">What counts as a rep?</div>
+            <div style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Anyone with an active learner profile. Add and remove profiles — billing adjusts at next cycle.</div>
+        </div>
+        <div style="border-bottom:1px solid var(--border);padding:16px 0;">
+            <div style="font-size:0.9rem;color:var(--text);font-weight:600;margin-bottom:4px;">What sectors does Max cover?</div>
+            <div style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Tech/SaaS, pharma, financial services, construction, recruitment, retail, and general B2B. Enterprise plans can add custom sectors.</div>
+        </div>
+        <div style="border-bottom:1px solid var(--border);padding:16px 0;">
+            <div style="font-size:0.9rem;color:var(--text);font-weight:600;margin-bottom:4px;">Can I trial it first?</div>
+            <div style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Yes. 7 days free, no card needed. Full Team plan access during the trial.</div>
+        </div>
+        <div style="padding:16px 0;">
+            <div style="font-size:0.9rem;color:var(--text);font-weight:600;margin-bottom:4px;">GDPR compliant?</div>
+            <div style="font-size:0.85rem;color:var(--dim);line-height:1.6;">Yes. First name, sector, session history only. No call recordings. UK GDPR. LOVEUAD LTD, Co. No. 16838046.</div>
         </div>
     </div>
+</section>
 
-    <div class="faq-item">
-        <div class="faq-q">What sectors does Max cover?</div>
-        <div class="faq-a">
-            Tech / SaaS, pharma, financial services, construction, recruitment, retail, and general B2B.
-            Max adapts all scenarios and examples to your sector so the practice feels realistic.
-        </div>
+<footer style="border-top:1px solid var(--border);padding:24px;text-align:center;font-size:0.8rem;color:var(--dim);">
+    <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:8px;">
+        <a href="/">Home</a><a href="/privacy">Privacy</a><a href="/login">Log in</a><a href="/register">Start free</a>
     </div>
+    trueskills.uk · LOVEUAD LTD · Company No. 16838046
+</footer>
 
-    <div class="faq-item">
-        <div class="faq-q">What experience levels does it cover?</div>
-        <div class="faq-a">
-            Junior (0–2 years), mid-level (2–5 years), and senior (5+ years / team lead).
-            Max calibrates difficulty and depth automatically based on your level and session history.
-        </div>
-    </div>
-
-    <div class="faq-item">
-        <div class="faq-q">Can I use this for a whole sales team?</div>
-        <div class="faq-a">
-            Yes. The Pro plan supports multiple learner profiles under one account.
-            Each learner has their own session history, XP, and progress track.
-            The manager dashboard shows all of them in one view.
-        </div>
-    </div>
-
-    <div class="faq-item">
-        <div class="faq-q">What data do you store?</div>
-        <div class="faq-a">
-            First name, sector, experience level, and session history.
-            No call recordings. No CRM data. No data sold to third parties.
-            UK GDPR compliant. You can request full deletion at any time.
-        </div>
-    </div>
-
-    <div class="faq-item">
-        <div class="faq-q">Can I cancel?</div>
-        <div class="faq-a">
-            Yes. Any time. No notice period. No questions asked.
-        </div>
-    </div>
-
-</div>
-
-</body>
-</html>
+<style>
+@media(max-width:700px){div[style*="grid-template-columns:1fr 1fr 1fr"]{display:flex!important;flex-direction:column!important;}}
+</style>
+{% endblock %}
