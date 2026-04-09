@@ -55,7 +55,7 @@ if not LLM_BACKEND:
 # UNIFIED LLM CALLER — Works with either backend
 # ================================================================
 
-def call_ai(system_prompt, user_message, max_tokens=1024, temperature=0.7):
+def call_ai(system_prompt, user_message, max_tokens=540, temperature=0.7):
     """Call Gemini. Returns text."""
     if not gemini_client:
         return None
@@ -77,7 +77,7 @@ def call_ai(system_prompt, user_message, max_tokens=1024, temperature=0.7):
 
 
 def call_ai_long(system_prompt, user_message):
-    return call_ai(system_prompt, user_message, max_tokens=8192, temperature=0.7)
+    return call_ai(system_prompt, user_message, max_tokens=540, temperature=0.7)
 
 
 def call_ai_chat(system_prompt, history, user_message):
@@ -96,7 +96,7 @@ def call_ai_chat(system_prompt, history, user_message):
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
-                max_output_tokens=1024,
+                max_output_tokens=540,
                 temperature=0.7,
             ),
         )
@@ -1524,30 +1524,32 @@ def api_practice():
     is_opening = len(history) <= 1
 
     system = (
-        f"You are {persona} in a sales call roleplay.\n"
+        f"You are {persona}. A salesperson called you.\n"
         f"Scenario: {scenario}\n\n"
-        f"OUTPUT RULES — no exceptions:\n"
-        f"- Output ONLY the words you speak. Nothing else.\n"
-        f"- NO brackets. NO stage directions. NO (pauses). NO actions. NO asterisks.\n"
-        f"- NO phone sounds. NO 'Hello?' openers unless responding to a greeting.\n"
-        f"- Maximum 25 words. Plain spoken English only.\n"
-        f"- Be realistic: skeptical but not rude, occasionally curious.\n"
-        f"- Raise objections naturally: price, timing, existing solution, no budget.\n"
-        f"{'- This is your FIRST line. Just respond to being called. One short sentence.' if is_opening else ''}\n\n"
-        f"{'Prior conversation:' + chr(10) + prior if prior else ''}"
+        f"RULES — zero tolerance:\n"
+        f"- Output ONLY spoken words. No labels, no formatting, no punctuation beyond commas and periods.\n"
+        f"- NEVER use square brackets. NEVER write [Name] [Company] [Product] or any placeholder.\n"
+        f"- NEVER use round brackets or stage directions.\n"
+        f"- NEVER use asterisks.\n"
+        f"- Do not introduce yourself by name. You are anonymous.\n"
+        f"- Max 15 words per reply.\n"
+        f"- Be blunt and skeptical. You get calls like this every day.\n"
+        f"{'- Opening line only: say you are busy and ask what this is about.' if is_opening else ''}\n\n"
+        f"{'Prior:' + chr(10) + prior if prior else ''}"
     )
 
-    reply = call_ai(system, f"Salesperson: {last_rep}" if last_rep else "The salesperson has just called you.", max_tokens=120, temperature=0.75)
+    user_msg = f"Salesperson said: {last_rep}" if last_rep else "The salesperson just called."
+    reply = call_ai(system, user_msg, max_tokens=540, temperature=0.7)
 
-    # Strip any stage directions or brackets Gemini adds
+    # Strip any remaining brackets/placeholders
     import re
     if reply:
-        reply = re.sub(r'\([^)]*\)', '', reply)
         reply = re.sub(r'\[[^\]]*\]', '', reply)
+        reply = re.sub(r'\([^)]*\)', '', reply)
         reply = re.sub(r'\*[^*]*\*', '', reply)
         reply = re.sub(r'\s+', ' ', reply).strip().strip('"').strip()
 
-    return jsonify({'reply': reply or "Yes, go ahead — what is this about?"})
+    return jsonify({'reply': reply or "I'm busy. What do you want?"})
 
 
 
