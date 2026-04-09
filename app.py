@@ -1409,17 +1409,18 @@ def delete_account():
 
 @app.route('/api/tts', methods=['POST'])
 def api_tts():
-    """Gemini TTS — returns WAV audio for any text."""
+    """Gemini TTS — wraps raw PCM in WAV header so browser can play it."""
     data  = request.get_json() or {}
-    text  = data.get('text', '').strip()[:500]
-    voice = data.get('voice', 'Charon')  # Charon=Max, Puck=prospect
+    text  = data.get('text', '').strip()[:400]
+    voice = data.get('voice', 'Charon')
     if not text:
         return jsonify({'error': 'No text'}), 400
     if not gemini_client:
         return jsonify({'error': 'Gemini not configured'}), 503
     try:
         from google.genai import types
-        import base64
+        import base64, struct, io
+
         response = gemini_client.models.generate_content(
             model='gemini-2.5-flash-preview-tts',
             contents=text,
@@ -1434,10 +1435,38 @@ def api_tts():
                 )
             )
         )
-        audio_data = response.candidates[0].content.parts[0].inline_data.data
-        audio_bytes = base64.b64decode(audio_data)
+
+        # Gemini returns raw PCM (16-bit signed, 24kHz, mono)
+        audio_b64 = response.candidates[0].content.parts[0].inline_data.data
+        pcm_data  = base64.b64decode(audio_b64)
+
+        # Build WAV container around the PCM data
+        sample_rate   = 24000
+        num_channels  = 1
+        bits_per_sample = 16
+        byte_rate     = sample_rate * num_channels * bits_per_sample // 8
+        block_align   = num_channels * bits_per_sample // 8
+        data_size     = len(pcm_data)
+        chunk_size    = 36 + data_size
+
+        wav_buf = io.BytesIO()
+        wav_buf.write(b'RIFF')
+        wav_buf.write(struct.pack('<I', chunk_size))
+        wav_buf.write(b'WAVE')
+        wav_buf.write(b'fmt ')
+        wav_buf.write(struct.pack('<I', 16))           # subchunk size
+        wav_buf.write(struct.pack('<H', 1))            # PCM format
+        wav_buf.write(struct.pack('<H', num_channels))
+        wav_buf.write(struct.pack('<I', sample_rate))
+        wav_buf.write(struct.pack('<I', byte_rate))
+        wav_buf.write(struct.pack('<H', block_align))
+        wav_buf.write(struct.pack('<H', bits_per_sample))
+        wav_buf.write(b'data')
+        wav_buf.write(struct.pack('<I', data_size))
+        wav_buf.write(pcm_data)
+
         from flask import Response
-        return Response(audio_bytes, status=200, mimetype='audio/wav',
+        return Response(wav_buf.getvalue(), status=200, mimetype='audio/wav',
                         headers={'Cache-Control': 'no-cache'})
     except Exception as e:
         print(f'[TTS] {e}')
@@ -1490,32 +1519,35 @@ def api_practice():
     prior = '\n'.join(
         f"{'Salesperson' if m['role'] == 'rep' else 'Prospect'}: {m['text']}"
         for m in history[:-1]
-    ) if len(history) > 1 else 'This is the start of the call.'
+    ) if len(history) > 1 else ''
+
+    is_opening = len(history) <= 1
 
     system = (
-        f"You are {persona}. A salesperson has called you.\n"
+        f"You are {persona} in a sales call roleplay.\n"
         f"Scenario: {scenario}\n\n"
-        f"STRICT RULES — no exceptions:\n"
-        f"- Output ONLY your spoken words. NO stage directions, NO actions in brackets, NO (pauses), NO (chuckles).\n"
-        f"- Real speech only. Exactly as you would say it on a phone call.\n"
-        f"- Under 30 words per response.\n"
-        f"- Be realistic: sometimes skeptical, sometimes curious, never instantly sold.\n"
-        f"- Raise objections naturally when appropriate: timing, budget, existing solution.\n"
-        f"- If the rep makes a strong point, acknowledge it briefly and probe further.\n"
-        f"- NEVER give hints, never break character, never say anything a real prospect would not say.\n\n"
-        f"Conversation so far:\n{prior}"
+        f"OUTPUT RULES — no exceptions:\n"
+        f"- Output ONLY the words you speak. Nothing else.\n"
+        f"- NO brackets. NO stage directions. NO (pauses). NO actions. NO asterisks.\n"
+        f"- NO phone sounds. NO 'Hello?' openers unless responding to a greeting.\n"
+        f"- Maximum 25 words. Plain spoken English only.\n"
+        f"- Be realistic: skeptical but not rude, occasionally curious.\n"
+        f"- Raise objections naturally: price, timing, existing solution, no budget.\n"
+        f"{'- This is your FIRST line. Just respond to being called. One short sentence.' if is_opening else ''}\n\n"
+        f"{'Prior conversation:' + chr(10) + prior if prior else ''}"
     )
 
-    reply = call_ai(system, f"Salesperson: {last_rep}", max_tokens=60, temperature=0.8)
+    reply = call_ai(system, f"Salesperson: {last_rep}" if last_rep else "The salesperson has just called you.", max_tokens=120, temperature=0.75)
 
-    # Strip any stage directions Gemini adds anyway
+    # Strip any stage directions or brackets Gemini adds
     import re
     if reply:
-        reply = re.sub(r'\([^)]*\)', '', reply).strip()
-        reply = re.sub(r'\*[^*]*\*', '', reply).strip()
-        reply = reply.strip('"').strip()
+        reply = re.sub(r'\([^)]*\)', '', reply)
+        reply = re.sub(r'\[[^\]]*\]', '', reply)
+        reply = re.sub(r'\*[^*]*\*', '', reply)
+        reply = re.sub(r'\s+', ' ', reply).strip().strip('"').strip()
 
-    return jsonify({'reply': reply or "Right, what have you got for me?"})
+    return jsonify({'reply': reply or "Yes, go ahead — what is this about?"})
 
 
 
