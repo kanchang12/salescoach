@@ -6,6 +6,20 @@
 <script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script>
 
 <style>
+    /* Hide ONLY the default floating bottom-right launcher — not our overlay widget */
+    body > elevenlabs-convai,
+    body > [class*="elevenlabs-convai"],
+    body > [id*="elevenlabs-convai"] {
+        display: none !important;
+    }
+
+    /* Make the widget inside our overlay fill the space properly */
+    #elWidgetWrapper elevenlabs-convai {
+        display: block !important;
+        width: 100% !important;
+    }
+
+<style>
     * { box-sizing: border-box; }
 
     body {
@@ -447,9 +461,11 @@
         <h2>Live Voice Session with Max</h2>
         <p>Your AI sales coach is listening. Speak naturally — Max will respond in real time.</p>
         <div class="el-widget-wrapper" id="elWidgetWrapper">
-            <!-- ElevenLabs widget injected here -->
+            <!-- ElevenLabs widget injected and auto-started here -->
         </div>
-        <button class="voice-close-btn" onclick="closeVoiceSession()">End Session</button>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button class="voice-close-btn" onclick="closeVoiceSession()">End Session</button>
+        </div>
     </div>
 </div>
 
@@ -674,15 +690,35 @@ function openVoiceSession() {
 
     // Inject the ElevenLabs widget if not already there
     const wrapper = document.getElementById('elWidgetWrapper');
-    if (!wrapper.querySelector('elevenlabs-convai')) {
-        const widget = document.createElement('elevenlabs-convai');
+    let widget = wrapper.querySelector('elevenlabs-convai');
+    if (!widget) {
+        widget = document.createElement('elevenlabs-convai');
         widget.setAttribute('agent-id', EL_AGENT_ID);
-        // Pass dynamic variables to personalise the agent
         widget.setAttribute('dynamic-variables', JSON.stringify({
             learner_name: LEARNER_NAME,
         }));
         wrapper.appendChild(widget);
     }
+
+    // Auto-click the widget's start button once it is ready
+    // The widget renders a button internally — we trigger it after a short delay
+    setTimeout(() => {
+        try {
+            // Try the programmatic API first
+            if (typeof widget.startSession === 'function') {
+                widget.startSession();
+                return;
+            }
+            // Fallback: find and click the internal start/call button
+            const shadow = widget.shadowRoot;
+            if (shadow) {
+                const btn = shadow.querySelector('button[class*="start"], button[class*="call"], button[aria-label*="start"], button[aria-label*="call"], button');
+                if (btn) btn.click();
+            }
+        } catch(e) {
+            // Widget will still show — user can click Start a call manually
+        }
+    }, 800);
 
     document.getElementById('voiceSessionBtn').classList.add('voice-active');
 }
@@ -790,6 +826,35 @@ const textInput = document.getElementById('textInput');
 textInput.addEventListener('input', () => {
     textInput.style.height = 'auto';
     textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
+});
+
+// ================================================================
+// HIDE ELEVENLABS DEFAULT FLOATING WIDGET
+// ================================================================
+
+function hideELWidget() {
+    // Target the default floating launcher injected by the script
+    const selectors = [
+        'elevenlabs-convai',
+        '[class*="convai-launcher"]',
+        '[id*="convai-launcher"]',
+        '[class*="elevenlabs-launcher"]',
+    ];
+    selectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+            // Only hide if it is NOT inside our overlay
+            if (!document.getElementById('elWidgetWrapper').contains(el)) {
+                el.style.cssText = 'display:none!important;visibility:hidden!important;';
+            }
+        });
+    });
+}
+
+// Run on load and after a short delay to catch async injection
+document.addEventListener('DOMContentLoaded', () => {
+    hideELWidget();
+    setTimeout(hideELWidget, 1000);
+    setTimeout(hideELWidget, 3000);
 });
 
 // ================================================================

@@ -124,7 +124,7 @@ from datetime import date, timedelta
 from models import (Parent, Child, LearningSession, DiamondTransaction,
                     AbsenceRecord, DiamondGoal, DailyProgress, BetaFeedback,
                     Curriculum, ChildCoverage)
-import curriculum as curriculum_module
+import sales_curriculum as curriculum_module
 
 def _hash_pw(password, salt=None):
     if not salt: salt = uuid.uuid4().hex
@@ -411,7 +411,7 @@ def l2l_start():
     import leo as leo_module
     child      = Child.query.get(session['child_id'])
     ls, is_new = get_or_create_ls(child)
-    year_group = child.year_group or 'year_2'
+    year_group = child.year_group or 'junior'
     interest   = (child.interests or {}).get('primary', 'default')
 
     # ── Decide what to teach — query DB for full picture ─────────
@@ -419,10 +419,10 @@ def l2l_start():
     ls.session_type   = subj
     ls.leo_current_unit = unit_id
 
-    unit = Curriculum.query.filter_by(unit_id=unit_id).first() if unit_id else None
+    unit = curriculum_module.get_topic_by_id(unit_id) if unit_id else None
     if unit:
-        ls.unit_id   = unit.unit_id
-        ls.unit_name = unit.topic_name
+        ls.unit_id   = unit['id']
+        ls.unit_name = unit['topic']
 
     # Store the reason so Leo can mention it in returning/i_do phase
     if teach_reason:
@@ -451,82 +451,52 @@ def l2l_start():
 
 def _decide_what_to_teach(child, year_group):
     """
-    Query DB to decide subject + unit for today.
-    Returns (subject, unit_id, reason_string_for_leo).
-    Considers: struggle history, time since each subject, coverage gaps.
+    Decide which sales skill track and topic to teach today.
+    Uses sales_curriculum.py directly — no DB Curriculum table needed.
     """
-    # All units for this child's year group
-    all_units = (Curriculum.query
-                 .filter_by(year_group=year_group)
-                 .order_by(Curriculum.unit_order)
-                 .all())
+    SALES_TRACKS = ['prospecting','discovery','presentation','objection_handling',
+                    'closing','negotiation','account_management','sales_mindset']
 
-    # What child has covered and where they struggled
     coverage  = ChildCoverage.query.filter_by(child_id=child.id).all()
-    covered   = {c.unit_id for c in coverage}
+    covered   = [c.unit_id for c in coverage]
     struggled = {c.unit_id: c.struggle_count for c in coverage if c.struggle_count > 0}
-    last_practiced = {c.unit_id: c.last_practiced for c in coverage}
-
-    # Last session per subject
-    last_by_subj = {}
-    for subj in ['maths', 'reading', 'coding']:
-        s = (LearningSession.query
-             .filter_by(child_id=child.id, session_type=subj)
-             .order_by(LearningSession.started_at.desc())
-             .first())
-        if s and s.started_at:
-            last_by_subj[subj] = s.started_at
-
     total_sessions = LearningSession.query.filter_by(child_id=child.id).count()
 
-    # ── Priority 1: Unit child struggled with, not revisited in 2+ sessions ──
+    # Priority 1: Revisit struggled topic
     if struggled and total_sessions >= 3:
-        # Find most-struggled unit not done in last 2 sessions
         recent_units = [s.unit_id for s in
                        LearningSession.query.filter_by(child_id=child.id)
-                       .order_by(LearningSession.started_at.desc())
-                       .limit(2).all()]
-        for unit in all_units:
-            if unit.unit_id in struggled and unit.unit_id not in recent_units:
-                return (unit.subject, unit.unit_id,
-                        f"Last time we found {unit.topic_name} a bit tricky. Let us look at it again together.")
+                       .order_by(LearningSession.started_at.desc()).limit(2).all()]
+        for unit_id in sorted(struggled, key=lambda x: -struggled[x]):
+            if unit_id not in recent_units:
+                topic = curriculum_module.get_topic_by_id(unit_id)
+                if topic:
+                    for track in SALES_TRACKS:
+                        if unit_id in curriculum_module.get_track_topics(track):
+                            return track, unit_id, f"Last time we looked at {topic['topic']}. Let us sharpen that up."
 
-    # ── Priority 2: Subject not touched in 3+ sessions ────────────────────
-    if total_sessions >= 3:
-        now = datetime.now(timezone.utc)
-        neglected_order = sorted(
-            ['maths','reading','coding'],
-            key=lambda s: last_by_subj.get(s, datetime.min.replace(tzinfo=timezone.utc))
-        )
-        for subj in neglected_order:
-            uncovered = [u for u in all_units if u.subject == subj and u.unit_id not in covered]
-            if uncovered:
-                days_ago = (now - last_by_subj[subj]).days if subj in last_by_subj else 999
-                if days_ago >= 3:
-                    return (subj, uncovered[0].unit_id,
-                            f"We have not done {subj} for a few days. Let us switch things up today.")
+    # Priority 2: Continue current track
+    last_session = (LearningSession.query.filter_by(child_id=child.id)
+                    .order_by(LearningSession.started_at.desc()).first())
+    current_track = last_session.session_type if last_session else 'prospecting'
+    if current_track not in SALES_TRACKS:
+        current_track = 'prospecting'
 
-    # ── Priority 3: Continue current subject, next uncovered unit ─────────
-    last_subj = (LearningSession.query
-                 .filter_by(child_id=child.id)
-                 .order_by(LearningSession.started_at.desc())
-                 .first())
-    current_subj = last_subj.session_type if last_subj else 'maths'
-    if current_subj not in ('maths','reading','coding'):
-        current_subj = 'maths'
+    next_topic = curriculum_module.get_next_topic(year_group, current_track, covered)
+    if next_topic:
+        return current_track, next_topic['id'], None
 
-    uncovered_current = [u for u in all_units if u.subject == current_subj and u.unit_id not in covered]
-    if uncovered_current:
-        return current_subj, uncovered_current[0].unit_id, None
+    # Priority 3: Move to next track with uncovered topics
+    for track in SALES_TRACKS:
+        next_topic = curriculum_module.get_next_topic(year_group, track, covered)
+        if next_topic:
+            return track, next_topic['id'], f"Let us move on to {track.replace('_',' ')} today."
 
-    # ── Priority 4: Any subject with uncovered units ───────────────────────
-    for subj in ['maths','reading','coding']:
-        uncovered = [u for u in all_units if u.subject == subj and u.unit_id not in covered]
-        if uncovered:
-            return subj, uncovered[0].unit_id, f"Great work. Let us try some {subj} today."
-
-    # ── All done ───────────────────────────────────────────────────────────
-    return 'maths', None, "all_covered"
+    # All covered — restart from prospecting
+    first = curriculum_module.get_next_topic(year_group, 'prospecting', [])
+    if first:
+        return 'prospecting', first['id'], "You have covered everything once. Let us go deeper."
+    return 'prospecting', None, "all_covered"
 
 
 # ================================================================
@@ -579,11 +549,11 @@ def l2l_chat():
     diamond_events = []
 
     # ── Subject safety ───────────────────────────────────────────
-    subject = ls.session_type if ls.session_type in {'maths','reading','coding'} else 'maths'
+    subject = ls.session_type if ls.session_type in {'prospecting','discovery','presentation','objection_handling','closing','negotiation','account_management','sales_mindset'} else 'prospecting'
     if ls.session_type != subject:
         ls.session_type = subject
 
-    year_group = ls.year_group or child.year_group or 'year_2'
+    year_group = ls.year_group or child.year_group or 'junior'
     interest   = (child.interests or {}).get('primary', 'default')
     chat_log   = list(ls.chat_log or [])
     covered    = list(ChildCoverage.query.filter_by(child_id=child.id)
@@ -605,9 +575,14 @@ def l2l_chat():
 
     # ── Subject switch — child asks Leo to teach something else ─────
     SUBJECT_WORDS = {
-        'maths':   ['maths','math','numbers','adding','times tables','subtraction','multiplication'],
-        'reading': ['reading','read','story','stories','book','comprehension','english'],
-        'coding':  ['coding','code','programming','computer science','scratch','algorithm'],
+        'prospecting':        ['prospecting','cold call','outreach','leads','pipeline','icp','qualify'],
+        'discovery':          ['discovery','needs','questions','spin','stakeholder'],
+        'presentation':       ['presentation','demo','value prop','proposal','pitch'],
+        'objection_handling': ['objection','objections','pushback','price','too expensive','competitor'],
+        'closing':            ['closing','close','commitment','next step','sign off'],
+        'negotiation':        ['negotiation','negotiate','terms','discount','anchor'],
+        'account_management': ['account','qbr','upsell','expansion','churn','renewal'],
+        'sales_mindset':      ['mindset','resilience','rejection','discipline','habits'],
     }
     msg_lower = msg.lower()
     for req_subj, keywords in SUBJECT_WORDS.items():
@@ -630,7 +605,7 @@ def l2l_chat():
                     new_topic['id'], req_subj, year_group,
                     interest, gemini_client, GEMINI_MODEL)
             # Also update teach_reason so Leo knows why this subject was chosen
-            session['teach_reason'] = f"{child.first_name} asked to switch to {req_subj}"
+            session['teach_reason'] = f"{child.first_name} asked to switch to {req_subj.replace('_',' ')}"
             break
 
     # ── Effort signals ───────────────────────────────────────────
@@ -650,14 +625,14 @@ def l2l_chat():
         # Unit just completed — move to next unit's i_do
         covered_now = ls.leo_concepts_covered or []
         next_t = curriculum_module.get_next_topic(
-            ls.year_group or 'year_2', subject, covered_now)
+            ls.year_group or 'junior', subject, covered_now)
         if next_t:
             ls.leo_current_unit   = next_t['id']
             ls.unit_id            = next_t['id']
             ls.unit_name          = next_t['topic']
             interest_now = (child.interests or {}).get('primary', 'default')
             leo_module.ensure_question_bank(
-                next_t['id'], subject, ls.year_group or 'year_2',
+                next_t['id'], subject, ls.year_group or 'junior',
                 interest_now, gemini_client, GEMINI_MODEL)
         ls.leo_phase          = 'i_do'
         ls.leo_msgs_in_phase  = 0
@@ -666,28 +641,28 @@ def l2l_chat():
 
     phase = ls.leo_phase or 'rapport'
 
-    # ── Get current topic from Curriculum table ──────────────────
-    topic = Curriculum.query.filter_by(unit_id=ls.leo_current_unit).first() if ls.leo_current_unit else None
+    # ── Get current topic from sales_curriculum ──────────────────
+    topic = curriculum_module.get_topic_by_id(ls.leo_current_unit) if ls.leo_current_unit else None
     if not topic:
-        # Find next uncovered unit from DB
-        topic = (Curriculum.query
-                 .filter_by(year_group=year_group, subject=subject)
-                 .filter(~Curriculum.unit_id.in_(covered if covered else ['__none__']))
-                 .order_by(Curriculum.unit_order)
-                 .first())
-        if topic:
-            ls.leo_current_unit = topic.unit_id
-            ls.unit_id   = topic.unit_id
-            ls.unit_name = topic.topic_name
+        next_t = curriculum_module.get_next_topic(year_group, subject, covered)
+        if next_t:
+            topic = next_t
+            ls.leo_current_unit = topic['id']
+            ls.unit_id   = topic['id']
+            ls.unit_name = topic['topic']
             leo_module.ensure_question_bank(
-                topic.unit_id, subject, year_group, interest,
+                topic['id'], subject, year_group, interest,
                 gemini_client, GEMINI_MODEL)
 
     if not topic:
-        # Genuinely covered everything
-        reply = f"You have worked through everything {child.first_name}. Incredible. Come back tomorrow!"
-        _save_chat(ls, msg, reply, chat_log)
-        return jsonify({'reply':reply, 'diamond_events':[], 'diamond_balance':child.diamond_balance})
+        # Restart from first prospecting topic
+        topic = curriculum_module.get_next_topic(year_group, 'prospecting', [])
+        if topic:
+            ls.leo_current_unit = topic['id']
+            ls.unit_id   = topic['id']
+            ls.unit_name = topic['topic']
+            ls.session_type = 'prospecting'
+            subject = 'prospecting'
 
     # ── Get question from bank (we_do and you_do phases) ─────────
     question_row = None
@@ -789,30 +764,27 @@ def l2l_chat():
 
             leo_module.write_session_summary(ls, child, gemini_client, GEMINI_MODEL)
 
-            # ── Next unit from Curriculum table ──────────────────
-            next_unit = (Curriculum.query
-                         .filter_by(year_group=year_group, subject=subject)
-                         .filter(~Curriculum.unit_id.in_(covered if covered else ['__none__']))
-                         .order_by(Curriculum.unit_order)
-                         .first())
+            # ── Next unit from sales_curriculum ──────────────────
+            covered_now = ls.leo_concepts_covered or []
+            next_unit = curriculum_module.get_next_topic(year_group, subject, covered_now)
             if next_unit:
-                ls.leo_current_unit   = next_unit.unit_id
+                ls.leo_current_unit   = next_unit['id']
                 ls.leo_phase          = 'i_do'
                 ls.leo_msgs_in_phase  = 0
                 ls.leo_we_do_attempts = 0
                 ls.leo_question_idx   = 0
-                ls.unit_id            = next_unit.unit_id
-                ls.unit_name          = next_unit.topic_name
+                ls.unit_id            = next_unit['id']
+                ls.unit_name          = next_unit['topic']
                 leo_module.ensure_question_bank(
-                    next_unit.unit_id, subject, year_group, interest,
+                    next_unit['id'], subject, year_group, interest,
                     gemini_client, GEMINI_MODEL)
 
     # ── Track struggle in ChildCoverage ──────────────────────────
     if phase == 'we_do' and ls.leo_we_do_attempts and ls.leo_we_do_attempts % 3 == 0:
-        cov = ChildCoverage.query.filter_by(child_id=child.id, unit_id=topic.unit_id if hasattr(topic,'unit_id') else '').first()
+        cov = ChildCoverage.query.filter_by(child_id=child.id, unit_id=topic.get('id','') if isinstance(topic,dict) else getattr(topic,'unit_id','')).first()
         if cov:
             cov.struggle_count += 1
-        elif hasattr(topic,'unit_id'):
+        elif isinstance(topic,dict) and topic.get('id'):
             db.session.add(ChildCoverage(child_id=child.id,unit_id=topic.unit_id,
                 subject=topic.subject,year_group=topic.year_group,struggle_count=1,mastery_level='learning'))
 
@@ -895,8 +867,8 @@ def voice_text():
         return jsonify({'transcript': transcript, 'error': 'No session. Please refresh.'}), 200
 
     diamond_events = []
-    subject    = ls.session_type if ls.session_type in {'maths','reading','coding'} else 'maths'
-    year_group = ls.year_group or child.year_group or 'year_2'
+    subject    = ls.session_type if ls.session_type in {'prospecting','discovery','presentation','objection_handling','closing','negotiation','account_management','sales_mindset'} else 'prospecting'
+    year_group = ls.year_group or child.year_group or 'junior'
     interest   = (child.interests or {}).get('primary', 'default')
     chat_log   = list(ls.chat_log or [])
     covered    = ls.leo_concepts_covered or []
@@ -1213,11 +1185,12 @@ def l2l_child_detail(child_id):
     curiosity_trend = [{'date': s.started_at.strftime('%d/%m') if s.started_at else '',
                         'questions': s.child_questions or 0} for s in all_sessions[-10:]]
 
-    # Learning plan — from Curriculum DB table
-    all_units = [{'id': u.unit_id, 'subject': u.subject, 'unit': u.topic_name,
-                  'difficulty': u.difficulty}
-                 for u in Curriculum.query.filter_by(year_group=child.year_group)
-                                    .order_by(Curriculum.unit_order).all()]
+    # Learning plan — from sales_curriculum
+    all_units = []
+    for track in ['prospecting','discovery','presentation','objection_handling',
+                  'closing','negotiation','account_management','sales_mindset']:
+        for t in curriculum_module.get_curriculum(child.year_group or 'junior', track):
+            all_units.append({'id': t['id'], 'subject': track, 'unit': t['topic'], 'difficulty': 'standard'})
 
     # Coverage — from ChildCoverage table (source of truth)
     coverage_rows    = ChildCoverage.query.filter_by(child_id=child.id).all()
